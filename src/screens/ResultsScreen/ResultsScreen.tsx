@@ -124,7 +124,16 @@ export const ResultsScreen = ({ navigation, route }: ResultsScreenProps) => {
           
           <View style={styles.analysisItem}>
             <Text style={styles.analysisLabel}>Skin Type</Text>
-            <Text style={styles.analysisValue}>{analysis.skinType.toUpperCase()}</Text>
+            <Text style={styles.analysisValue}>
+              {analysis.skinType.toUpperCase() === 'DRY' ? 'D' : 
+               analysis.skinType.toUpperCase() === 'OILY' ? 'O' : 
+               analysis.skinType.toUpperCase() === 'NORMAL' ? 'N' : 
+               analysis.skinType.toUpperCase() === 'COMBINATION' ? 'C' : 
+               analysis.skinType.toUpperCase()}
+            </Text>
+            <Text style={styles.analysisSubtext}>
+              {analysis.skinType.charAt(0).toUpperCase() + analysis.skinType.slice(1).toLowerCase()}
+            </Text>
           </View>
           
           <View style={styles.analysisItem}>
@@ -337,7 +346,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: scaleWidth(20),
     paddingTop: scaleWidth(10),
-    paddingBottom: scaleWidth(10),
+    paddingBottom: scaleWidth(0),
   },
   headerTitle: {
     fontSize: scaleWidth(38),
@@ -371,8 +380,8 @@ const styles = StyleSheet.create({
     padding: scaleWidth(15),
     width: '30%',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#ECECEC',
+    borderWidth: 2,
+    borderColor: '#E7E0E0',
   },
   analysisLabel: {
     fontSize: scaleWidth(14),
@@ -393,11 +402,12 @@ const styles = StyleSheet.create({
   },
   recommendationsContainer: {
     flex: 1,
+    marginBottom: scaleWidth(-100),
   },
   categoryTitle: {
-    fontSize: scaleWidth(24),
+    fontSize: scaleWidth(30),
     fontWeight: 'bold',
-    marginTop: scaleWidth(20),
+    marginTop: scaleWidth(10),
     marginBottom: scaleWidth(15),
     fontFamily: "InstrumentSans-Bold",
   },
@@ -416,13 +426,13 @@ const styles = StyleSheet.create({
     paddingRight: scaleWidth(110),
   },
   productName: {
-    fontSize: scaleWidth(16),
+    fontSize: scaleWidth(25),
     fontWeight: 'bold',
     marginBottom: scaleWidth(8),
     fontFamily: "InstrumentSans-Bold",
   },
   productDescription: {
-    fontSize: scaleWidth(14),
+    fontSize: scaleWidth(15),
     color: '#555',
     fontFamily: "InstrumentSans-Regular",
     flexWrap: 'wrap',
@@ -431,10 +441,16 @@ const styles = StyleSheet.create({
     width: scaleWidth(100),
     height: scaleWidth(100),
     position: 'absolute',
-    right: scaleWidth(40),
+    right: scaleWidth(50),
     top: '50%',
     transform: [{ translateY: scaleWidth(-50) }],
     zIndex: 1,
+
+    shadowColor: '#000',
+    shadowOffset: { width: 2, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 10,
   },
   productPrice: {
     position: 'absolute',
@@ -451,32 +467,32 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   navBarContainer: {
-    width: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: "100%",
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: scaleWidth(10),
-    backgroundColor: 'white',
-    borderTopWidth: 1,
-    borderTopColor: '#EEE',
-    position: 'absolute',
-    bottom: 0,
+    marginBottom: scaleWidth(15),
   },
   bottomNav: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: '75%',
-    paddingBottom: scaleWidth(5),
+    flexDirection: "row",
+    justifyContent: "space-around",
+    alignItems: "center",
+    paddingVertical: scaleWidth(8),
+    width: "90%",
+    backgroundColor: "white",
   },
   navItem: {
     width: scaleWidth(42),
     height: scaleWidth(42),
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     borderRadius: scaleWidth(21),
   },
   activeNavItem: {
-    backgroundColor: '#CA5A5E',
+    backgroundColor: "#ca5a5e",
+  },
+  navIcon: {
+    resizeMode: "contain",
   },
 });
 
