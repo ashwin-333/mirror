@@ -3,7 +3,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // API configuration
 // const API_URL = 'http://10.0.2.2:5002/api'; // For Android emulator
-const API_URL = 'http://localhost:5002/api'; // For iOS simulator
+// const API_URL = 'http://localhost:5002/api'; // For iOS simulator
+const API_URL = 'http://10.0.0.200:5002/api'; // For access from phone on same network
 // const API_URL = 'https://your-production-api.com/api'; // For production
 
 // Token storage key
