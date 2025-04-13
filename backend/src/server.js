@@ -8,9 +8,7 @@ const authRoutes = require('./routes/auth');
 // Load env variables from root directory
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
-// Connect to MongoDB
-connectDB();
-
+// Create Express app
 const app = express();
 
 // Middleware
@@ -28,6 +26,57 @@ app.use((req, res, next) => {
   next();
 });
 
+// Health check route - this works even if DB is down
+app.get('/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'OK',
+    dbConnected: app.locals.dbConnected || false,
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Database status middleware
+app.use(async (req, res, next) => {
+  // Skip middleware for health check
+  if (req.path === '/health') {
+    return next();
+  }
+  
+  // If DB is already connected, proceed
+  if (app.locals.dbConnected) {
+    return next();
+  }
+  
+  // If DB connection is not established yet or previously failed
+  if (app.locals.dbConnected === false) {
+    res.status(503).json({
+      message: 'Database connection is not available',
+      error: 'Service Unavailable'
+    });
+    return;
+  }
+  
+  // If we don't know the DB status yet, try connecting
+  try {
+    const dbConnected = await connectDB();
+    app.locals.dbConnected = dbConnected;
+    
+    if (dbConnected) {
+      return next();
+    } else {
+      res.status(503).json({
+        message: 'Database connection is not available',
+        error: 'Service Unavailable'
+      });
+    }
+  } catch (error) {
+    res.status(503).json({
+      message: 'Database connection error',
+      error: error.message
+    });
+  }
+});
+
 // Serve static files from the uploads directory
 app.use('/uploads', (req, res, next) => {
   // Log the requested file
@@ -38,14 +87,26 @@ app.use('/uploads', (req, res, next) => {
 // Routes
 app.use('/api/auth', authRoutes);
 
-// Health check route
-app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'OK' });
-});
-
 const PORT = process.env.PORT || 5002;
 const HOST = '0.0.0.0'; // Listen on all network interfaces
 
-app.listen(PORT, HOST, () => {
-  console.log(`Server running on ${HOST}:${PORT}`);
-}); 
+// Connect to MongoDB and start server
+const startServer = async () => {
+  console.log('Starting server...');
+  
+  // Connect to MongoDB
+  const dbConnected = await connectDB();
+  app.locals.dbConnected = dbConnected;
+  
+  if (!dbConnected) {
+    console.warn('Server starting without database connection. Only health check will be available.');
+  }
+  
+  // Start the server
+  app.listen(PORT, HOST, () => {
+    console.log(`Server running on ${HOST}:${PORT}`);
+    console.log(`Health check available at http://${HOST}:${PORT}/health`);
+  });
+};
+
+startServer(); 
