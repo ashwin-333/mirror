@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 type RootStackParamList = {
   Welcome: undefined;
@@ -21,7 +22,7 @@ export const PrivacyPolicyScreen = () => {
   const lastUpdated = 'Apr 12, 2025';
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Image
@@ -88,11 +89,15 @@ export const PrivacyPolicyScreen = () => {
         <Text style={styles.section}>11. Contact Us</Text>
         <Text style={styles.text}>If you have any questions or concerns regarding this Privacy Policy or our data practices, please contact us at:</Text>
         <Text style={styles.text}>Email: support@mirror.com</Text>
+        
+        {/* Got It button placed at the end of content */}
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity style={styles.gotItButton} onPress={() => navigation.goBack()}>
+            <Text style={styles.gotItText}>Got it</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
-      <TouchableOpacity style={styles.gotItButton} onPress={() => navigation.goBack()}>
-        <Text style={styles.gotItText}>Got it</Text>
-      </TouchableOpacity>
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -104,11 +109,9 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: 60,
+    paddingTop: 10,
     paddingHorizontal: 20,
     paddingBottom: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5E5',
   },
   backButton: {
     padding: 10,
@@ -119,7 +122,7 @@ const styles = StyleSheet.create({
   },
   title: {
     flex: 1,
-    fontSize: 20,
+    fontSize: 24,
     fontFamily: 'InstrumentSans-SemiBold',
     textAlign: 'center',
     marginRight: 40,
@@ -129,16 +132,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666666',
     paddingHorizontal: 20,
-    paddingVertical: 10,
+    marginBottom: 5,
+    paddingBottom: 0, // Reduced bottom padding
   },
   content: {
     flex: 1,
     padding: 20,
+    paddingTop: 5, // Reduced top padding to bring first section closer to Last Updated
   },
   section: {
     fontSize: 16,
     fontWeight: '600',
-    marginTop: 20,
+    marginTop: 15, // Reduced top margin for first section
     marginBottom: 10,
   },
   subsection: {
@@ -160,16 +165,23 @@ const styles = StyleSheet.create({
     marginBottom: 5,
     paddingLeft: 15,
   },
+  buttonContainer: {
+    alignItems: 'center',
+    marginTop: 0,
+    marginBottom: 20,
+    alignSelf: 'flex-end',
+  },
   gotItButton: {
     backgroundColor: '#CA5A5E',
-    margin: 20,
-    padding: 15,
+    paddingVertical: 12,
+    paddingHorizontal: 25,
     borderRadius: 100,
     alignItems: 'center',
   },
   gotItText: {
+    fontFamily: 'InstrumentSans-Bold',
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 20,
     fontWeight: '600',
   },
 }); 

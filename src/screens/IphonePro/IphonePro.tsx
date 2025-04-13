@@ -1,9 +1,17 @@
-import React from "react";
-import { View, Text, Image, TouchableOpacity, StyleSheet, Dimensions, Platform, StatusBar } from "react-native";
+import React, { useState, useEffect, useCallback } from "react";
+import { View, Text, Image, TouchableOpacity, StyleSheet, Dimensions, Platform, StatusBar, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { HomeMainSvg } from "../../components/HomeMainSvg";
 import HairBtnSvg from '../../components/HairBtnSvg';
 import FaceBtnSvg from '../../components/FaceBtnSvg';
+import { useAuth } from "../../context/AuthContext";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from '@react-navigation/native';
+import { HomeSvg } from "../../components/HomeSvg";
+import { RightArrowSvg } from "../../components/RightArrowSvg";
+import { ScanSvg } from "../../components/ScanSvg";
+import { WandSvg } from "../../components/WandSvg";
+import { TagSvg } from "../../components/TagSvg";
 
 // We'll use these base values to preserve the exact ratio from your iPhone design
 // Adjust 393 to whatever your "base" design width is.
@@ -13,21 +21,110 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 // Function to convert iPhone 16 Pro's absolute pixel dimensions to the current device's width
 const scaleWidth = (size: number) => (size / BASE_WIDTH) * SCREEN_WIDTH;
 
+// Profile image storage key - same as in ProfileScreen
+const PROFILE_IMAGE_KEY = '@profile_image';
+
 type IphoneProProps = {
   navigation: any;
 };
 
 export const IphonePro = ({ navigation }: IphoneProProps): JSX.Element => {
-  // Navigation items data
+  // Get user data from auth context
+  const { user, checkUserStatus } = useAuth();
+  
+  // Get first name for display
+  const firstName = user?.name?.split(' ')[0]?.toUpperCase() || 'USER';
+
+  // State for profile image
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [loadingImage, setLoadingImage] = useState(false);
+  
+  // Load profile image - prioritize user data from API, fall back to local storage
+  const loadProfileImage = async () => {
+    try {
+      setLoadingImage(true);
+      console.log('IphonePro: Loading profile image, user object:', JSON.stringify({
+        hasUser: !!user,
+        userId: user?._id,
+        userName: user?.name,
+        hasProfileImage: !!user?.profileImage,
+        profileImageType: typeof user?.profileImage
+      }));
+      
+      // First check if user has a profile image in their data (from server)
+      if (user?.profileImage) {
+        console.log('IphonePro: Using profile image from user data');
+        // The image is now a complete data URL from the server
+        setProfileImage(user.profileImage);
+      } else {
+        console.log('IphonePro: No profile image in user data, trying local storage');
+        // Fall back to local storage if no server image
+        const savedImage = await AsyncStorage.getItem(PROFILE_IMAGE_KEY);
+        if (savedImage) {
+          console.log('IphonePro: Using profile image from local storage');
+          setProfileImage(savedImage);
+        } else {
+          console.log('IphonePro: No profile image found in local storage');
+        }
+      }
+    } catch (error) {
+      console.error('Error loading profile image:', error);
+    } finally {
+      setLoadingImage(false);
+    }
+  };
+
+  // Initial load on mount
+  useEffect(() => {
+    loadProfileImage();
+  }, []);
+  
+  // Reload profile image whenever the screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      // Just load the profile image based on current user data
+      // Don't call checkUserStatus here as it creates an infinite loop
+      loadProfileImage();
+      return () => {};
+    }, [user]) // Add user as a dependency so it updates when user changes
+  );
+
+  // Navigation items data with SVG components
   const navigationItems = [
-    { icon: require("../../../assets/home.png"), active: true },
-    { icon: require("../../../assets/arrow.png"), active: false },
-    { icon: require("../../../assets/scan.png"), active: false },
-    { icon: require("../../../assets/arrow.png"), active: false },
-    { icon: require("../../../assets/wand.png"), active: false },
-    { icon: require("../../../assets/arrow.png"), active: false },
-    { icon: require("../../../assets/tag.png"), active: false },
+    { icon: 'home', active: true },
+    { icon: 'arrow', active: false },
+    { icon: 'scan', active: false },
+    { icon: 'arrow', active: false },
+    { icon: 'wand', active: false },
+    { icon: 'arrow', active: false },
+    { icon: 'tag', active: false },
   ];
+
+  // Function to render the appropriate SVG component based on the icon type
+  const renderNavIcon = (icon: string, isActive: boolean, index: number) => {
+    // Set colors based on active state
+    const iconColor = isActive ? 'white' : 'black';
+    
+    // Arrow icons are smaller than main icons
+    const arrowSize = scaleWidth(12);
+    const mainIconSize = scaleWidth(24);
+    const iconSize = index % 2 === 1 ? arrowSize : mainIconSize;
+    
+    switch(icon) {
+      case 'home':
+        return <HomeSvg width={iconSize} height={iconSize} color={iconColor} />;
+      case 'arrow':
+        return <RightArrowSvg width={arrowSize} height={arrowSize} color={iconColor} />;
+      case 'scan':
+        return <ScanSvg width={iconSize} height={iconSize} color={iconColor} />;
+      case 'wand':
+        return <WandSvg width={iconSize} height={iconSize} color={iconColor} />;
+      case 'tag':
+        return <TagSvg width={iconSize} height={iconSize} color={iconColor} fillColor={iconColor} />;
+      default:
+        return null;
+    }
+  };
 
   const handleScanPress = (mode: 'hair' | 'face') => {
     navigation.navigate('Camera', { mode });
@@ -45,14 +142,20 @@ export const IphonePro = ({ navigation }: IphoneProProps): JSX.Element => {
         <View style={styles.header}>
           <View style={styles.welcomeTextContainer}>
             <Text style={styles.welcomeText}>Welcome back,</Text>
-            <Text style={styles.nameText}>JACOB</Text>
+            <Text style={styles.nameText}>{firstName}</Text>
           </View>
           <TouchableOpacity onPress={handleProfilePress}>
-            <Image
-              source={require("../../../assets/ellipse-1.png")}
-              style={styles.profileImage}
-              resizeMode="cover"
-            />
+            {loadingImage ? (
+              <View style={[styles.profileImage, styles.profileImageLoading]}>
+                <ActivityIndicator size="large" color="#CA5A5E" />
+              </View>
+            ) : (
+              <Image
+                source={profileImage ? { uri: profileImage } : require("../../../assets/ellipse-1.png")}
+                style={styles.profileImage}
+                resizeMode="cover"
+              />
+            )}
           </TouchableOpacity>
         </View>
 
@@ -88,15 +191,7 @@ export const IphonePro = ({ navigation }: IphoneProProps): JSX.Element => {
                   item.active && styles.activeNavItem
                 ]}
               >
-                <Image
-                  source={item.icon}
-                  style={[
-                    styles.navIcon,
-                    // The arrow icons were half the size (12x12) of the main icons (24x24)
-                    index % 2 === 1 ? styles.arrowIcon : styles.mainIcon
-                  ]}
-                  resizeMode="contain"
-                />
+                {renderNavIcon(item.icon, item.active, index)}
               </TouchableOpacity>
             ))}
           </View>
@@ -133,6 +228,11 @@ const styles = StyleSheet.create({
     width: scaleWidth(48),
     height: scaleWidth(48),
     borderRadius: scaleWidth(48) / 2,
+  },
+  profileImageLoading: {
+    backgroundColor: 'white',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   bodyContent: {
     flex: 1,

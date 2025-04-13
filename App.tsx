@@ -60,7 +60,11 @@ const AuthNavigator = () => {
         cardStyle: { backgroundColor: 'white' }
       }}
     >
-      <AuthStack.Screen name="Welcome" component={WelcomeScreen} />
+      <AuthStack.Screen 
+        name="Welcome" 
+        component={WelcomeScreen}
+        options={{ gestureEnabled: false }}
+      />
       <AuthStack.Screen name="SignUp" component={SignUpScreen} />
       <AuthStack.Screen name="TermsAndConditions" component={TermsAndConditionsScreen} />
       <AuthStack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
@@ -78,7 +82,11 @@ const AppNavigator = () => {
         cardStyle: { backgroundColor: 'white' }
       }}
     >
-      <AppStack.Screen name="Home" component={IphonePro} />
+      <AppStack.Screen 
+        name="Home" 
+        component={IphonePro}
+        options={{ gestureEnabled: false }}
+      />
       <AppStack.Screen name="Camera" component={CameraScreen} />
       <AppStack.Screen name="HairInfo" component={HairInfoScreen} />
       <AppStack.Screen name="Loading" component={LoadingScreen} />

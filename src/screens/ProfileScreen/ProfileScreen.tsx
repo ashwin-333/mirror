@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -18,6 +18,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useAuth } from '../../context/AuthContext';
+import * as ImagePicker from 'expo-image-picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { authService } from '../../services/api';
 
 // Enable LayoutAnimation for Android
 if (Platform.OS === 'android') {
@@ -56,11 +59,125 @@ const hairProducts: Product[] = [
   { id: 3, name: 'The Ordinary', subtext: 'Niacinamide + Zinc', image: require('../../../assets/example-cleanser.png') },
 ];
 
+// Profile image storage key
+const PROFILE_IMAGE_KEY = '@profile_image';
+
 export const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<ProfileScreenProps>();
   const { width } = Dimensions.get('window');
-  const { user, logout } = useAuth();
+  const { user, logout, checkUserStatus } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  
+  // Get user's name and split into first/last name parts
+  const userName = user?.name || 'User Name';
+  const nameParts = userName.split(' ');
+  const firstName = nameParts[0] || '';
+  const lastName = nameParts.slice(1).join(' ') || '';
+  
+  // State for profile image
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [loadingImage, setLoadingImage] = useState(false);
+  
+  // Load profile image when user data changes
+  useEffect(() => {
+    console.log('ProfileScreen: User object changed:', JSON.stringify({
+      hasUser: !!user,
+      userId: user?._id,
+      userName: user?.name,
+      hasProfileImage: !!user?.profileImage,
+      profileImageType: typeof user?.profileImage
+    }));
+    
+    if (user?.profileImage) {
+      console.log('ProfileScreen: Using profile image from user data');
+      // The image is now a complete data URL ready to use
+      setProfileImage(user.profileImage);
+      // Also save to local storage as a fallback
+      saveProfileImageToLocalStorage(user.profileImage);
+    } else {
+      console.log('ProfileScreen: No profile image in user data, trying local storage');
+      // If no server image, try local storage
+      loadProfileImageFromLocalStorage();
+    }
+  }, [user]);
+  
+  // Load profile image from local storage (fallback)
+  const loadProfileImageFromLocalStorage = async () => {
+    try {
+      const savedImage = await AsyncStorage.getItem(PROFILE_IMAGE_KEY);
+      if (savedImage) {
+        setProfileImage(savedImage);
+      }
+    } catch (error) {
+      console.error('Error loading profile image from local storage:', error);
+    }
+  };
+  
+  // Save profile image to local storage (fallback)
+  const saveProfileImageToLocalStorage = async (imageUri: string) => {
+    try {
+      await AsyncStorage.setItem(PROFILE_IMAGE_KEY, imageUri);
+    } catch (error) {
+      console.error('Error saving profile image to local storage:', error);
+    }
+  };
+  
+  // Handle profile image editing
+  const handleEditProfileImage = async () => {
+    try {
+      // Request permissions
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      
+      if (!permissionResult.granted) {
+        Alert.alert('Permission Required', 'You need to allow access to your photos to change your profile picture.');
+        return;
+      }
+      
+      setLoadingImage(true);
+      
+      // Launch image picker
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.7,
+      });
+      
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const selectedImageUri = result.assets[0].uri;
+        
+        try {
+          // Upload image to server
+          const serverImageUrl = await authService.uploadProfileImage(selectedImageUri);
+          console.log('ProfileScreen: Image uploaded to server, URL:', typeof serverImageUrl);
+          
+          // Immediately refresh user data to get the updated profile image from MongoDB
+          await checkUserStatus();
+          
+          // Also update local state and storage as a fallback
+          setProfileImage(serverImageUrl);
+          saveProfileImageToLocalStorage(serverImageUrl);
+          
+        } catch (uploadError) {
+          console.error('Failed to upload image to server:', uploadError);
+          
+          // Fall back to local storage if server upload fails
+          setProfileImage(selectedImageUri);
+          saveProfileImageToLocalStorage(selectedImageUri);
+          
+          Alert.alert(
+            'Warning', 
+            'Your image was saved locally but could not be uploaded to the server. It may not sync across devices.'
+          );
+        }
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to pick image. Please try again.');
+      console.error('Error picking image:', error);
+    } finally {
+      setLoadingImage(false);
+    }
+  };
   
   // Bookmarked states
   const [bookmarkedSkin, setBookmarkedSkin] = useState<{ [key: number]: boolean }>({
@@ -214,19 +331,29 @@ export const ProfileScreen: React.FC = () => {
         {/* Profile Section */}
         <View style={styles.profileSection}>
           <View style={styles.profileImageContainer}>
-            <Image
-              source={require('../../../assets/profile.png')}
-              style={styles.profileImage}
-            />
-            <TouchableOpacity style={styles.editProfileButton}>
+            {loadingImage ? (
+              <View style={[styles.profileImage, styles.profileImageLoading]}>
+                <ActivityIndicator size="large" color="#CA5A5E" />
+              </View>
+            ) : (
+              <Image
+                source={profileImage ? { uri: profileImage } : require('../../../assets/profile.png')}
+                style={styles.profileImage}
+              />
+            )}
+            <TouchableOpacity 
+              style={styles.editProfileButton}
+              onPress={handleEditProfileImage}
+              disabled={loadingImage}
+            >
               <Image
                 source={require('../../../assets/edit-pfp.png')}
                 style={styles.editProfileIcon}
               />
             </TouchableOpacity>
           </View>
-          <Text style={styles.profileFirstName}>Jacob</Text>
-          <Text style={styles.profileLastName}>Abraham</Text>
+          <Text style={styles.profileFirstName}>{firstName}</Text>
+          {lastName ? <Text style={styles.profileLastName}>{lastName}</Text> : null}
         </View>
 
         {/* Bookmarks Section */}
@@ -365,7 +492,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 5,
     marginBottom: 10,
-    marginTop: -60,
+    marginTop: -40,
   },
   profileImageContainer: {
     position: 'relative',
@@ -375,6 +502,13 @@ const styles = StyleSheet.create({
     width: 110,
     height: 110,
     borderRadius: 55,
+  },
+  profileImageLoading: {
+    backgroundColor: 'white',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#f0f0f0',
   },
   editProfileButton: {
     position: 'absolute',

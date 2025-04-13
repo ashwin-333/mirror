@@ -171,6 +171,7 @@ export const authService = {
       }
       
       const response = await api.get('/auth/me');
+      console.log('API Service: Current user data:', JSON.stringify(response.data));
       return response.data;
     } catch (error: any) {
       console.error('API Service: Get current user error:', error.response?.data || error.message);
@@ -182,6 +183,67 @@ export const authService = {
   async isAuthenticated() {
     const token = await AsyncStorage.getItem(TOKEN_KEY);
     return !!token;
+  },
+
+  // Upload profile image
+  async uploadProfileImage(imageUri: string) {
+    try {
+      console.log('API Service: Uploading profile image...');
+      // Create form data for the image upload
+      const formData = new FormData();
+      
+      // Get file name and extension from URI
+      const uriParts = imageUri.split('/');
+      const fileName = uriParts[uriParts.length - 1];
+      
+      // Get file type based on extension
+      const fileType = fileName.split('.').pop()?.toLowerCase() || 'jpg';
+      const mimeType = fileType === 'jpg' || fileType === 'jpeg' ? 'image/jpeg' : `image/${fileType}`;
+      
+      console.log('API Service: Image details:', { fileName, fileType, mimeType });
+      
+      // Create the file object
+      const file = {
+        uri: imageUri,
+        name: fileName,
+        type: mimeType,
+      } as any;
+      
+      // Append the file to the form data
+      formData.append('profileImage', file);
+      
+      // Send the request with Authorization header
+      const token = await AsyncStorage.getItem(TOKEN_KEY);
+      
+      if (!token) {
+        throw new Error('Authentication required');
+      }
+      
+      // Get the current API URL
+      const apiUrl = await getApiUrl();
+      console.log('API Service: Using API URL for upload:', apiUrl);
+      
+      const response = await fetch(`${apiUrl}/auth/profile-image`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+        body: formData,
+      });
+      
+      const data = await response.json();
+      console.log('API Service: Profile image upload response:', JSON.stringify(data));
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to upload profile image');
+      }
+      
+      return data.profileImage;
+    } catch (error: any) {
+      console.error('API Service: Profile image upload error:', error.message);
+      throw error;
+    }
   }
 };
 

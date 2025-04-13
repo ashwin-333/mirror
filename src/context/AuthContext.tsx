@@ -48,7 +48,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Get current user data
         const userData = await authService.getCurrentUser();
         if (userData) {
-          console.log('AuthContext: User is authenticated');
+          console.log('AuthContext: User is authenticated, profile image exists:', !!userData.profileImage);
           setUser(userData);
         } else {
           console.log('AuthContext: Token exists but user data fetch failed');

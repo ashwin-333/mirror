@@ -9,6 +9,9 @@ import {
   StatusBar,
   Image,
   ActivityIndicator,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Logo } from '../../components/Logo';
@@ -55,73 +58,87 @@ export const WelcomeScreen = ({ navigation }: WelcomeScreenProps) => {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="white" />
       
-      {/* Logo */}
-      <View style={styles.logoContainer}>
-        <Logo width={scaleWidth(92)} height={scaleWidth(63)} />
-      </View>
-
-      {/* Welcome Text */}
-      <Text style={styles.title}>Welcome</Text>
-
-      {/* Input Fields */}
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          keyboardType="email-address"
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
-      </View>
-
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-      {/* Login Button with Arrow */}
-      <View style={styles.loginContainer}>
-        <TouchableOpacity 
-          style={styles.loginButton} 
-          onPress={handleLogin}
-          disabled={isLoading}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardAvoidingView}
+      >
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
-          {isLoading ? (
-            <ActivityIndicator size="small" color="#CA5A5E" />
-          ) : (
-            <>
-              <Text style={styles.loginText}>Log In</Text>
-              <Image 
-                source={require('../../../assets/red-right-arrow.png')} 
-                style={styles.arrowIcon}
-              />
-            </>
-          )}
-        </TouchableOpacity>
-      </View>
+          {/* Logo */}
+          <View style={styles.logoContainer}>
+            <Logo width={scaleWidth(92)} height={scaleWidth(63)} />
+          </View>
 
-      {/* Or Divider */}
-      <View style={styles.dividerContainer}>
-        <View style={styles.divider} />
-        <Text style={styles.dividerText}>or</Text>
-        <View style={styles.divider} />
-      </View>
+          {/* Welcome Text */}
+          <Text style={styles.title}>Welcome</Text>
 
-      {/* Create Account Section */}
-      <View style={styles.createAccountContainer}>
-        <Text style={styles.noAccountText}>Don't have an account?</Text>
-        <TouchableOpacity 
-          style={styles.createAccountButton} 
-          onPress={handleCreateAccount}
-        >
-          <Text style={styles.createAccountText}>Create an account</Text>
-        </TouchableOpacity>
-      </View>
+          {/* Input Fields */}
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={styles.input}
+              placeholder="Email"
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Password"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+            />
+          </View>
+
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+          {/* Login Button with Arrow */}
+          <View style={styles.loginContainer}>
+            <TouchableOpacity 
+              style={styles.loginButton} 
+              onPress={handleLogin}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <ActivityIndicator size="small" color="#CA5A5E" />
+              ) : (
+                <>
+                  <Text style={styles.loginText}>Log In</Text>
+                  <Image 
+                    source={require('../../../assets/red-right-arrow.png')} 
+                    style={styles.arrowIcon}
+                  />
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          {/* Or Divider */}
+          <View style={styles.dividerContainer}>
+            <View style={styles.divider} />
+            <Text style={styles.dividerText}>or</Text>
+            <View style={styles.divider} />
+          </View>
+
+          {/* Create Account Section */}
+          <View style={styles.createAccountContainer}>
+            <Text style={styles.noAccountText}>Don't have an account?</Text>
+            <TouchableOpacity 
+              style={styles.createAccountButton} 
+              onPress={handleCreateAccount}
+            >
+              <Text style={styles.createAccountText}>Create an account</Text>
+            </TouchableOpacity>
+          </View>
+          
+          {/* Extra padding at the bottom for better scrolling */}
+          <View style={styles.bottomPadding} />
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
@@ -130,8 +147,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: 'white',
+  },
+  keyboardAvoidingView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
     alignItems: 'center',
-    padding: scaleWidth(20),
+    paddingHorizontal: scaleWidth(20),
   },
   logoContainer: {
     marginTop: scaleWidth(50),
@@ -224,4 +247,7 @@ const styles = StyleSheet.create({
     marginTop: scaleWidth(16),
     fontFamily: 'InstrumentSans-Regular',
   },
+  bottomPadding: {
+    height: scaleWidth(30),
+  }
 }); 

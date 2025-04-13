@@ -8,30 +8,32 @@ const authRoutes = require('./routes/auth');
 // Load env variables from root directory
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
-// Connect to database
+// Connect to MongoDB
 connectDB();
 
 const app = express();
 
 // Middleware
-app.use(express.json());
+app.use(express.json({ limit: '10mb' })); // Increase JSON limit for base64 images
 app.use(cors());
+
+// Enable CORS for all routes
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  if (req.method === 'OPTIONS') {
+    res.header('Access-Control-Allow-Methods', 'PUT, POST, PATCH, DELETE, GET');
+    return res.status(200).json({});
+  }
+  next();
+});
 
 // Routes
 app.use('/api/auth', authRoutes);
 
-// Home route
-app.get('/', (req, res) => {
-  res.json({ message: 'API is running...' });
-});
-
-// Error handler
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({
-    message: 'Something went wrong!',
-    error: process.env.NODE_ENV === 'production' ? null : err.message,
-  });
+// Health check route
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'OK' });
 });
 
 const PORT = process.env.PORT || 5002;

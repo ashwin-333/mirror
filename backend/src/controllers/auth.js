@@ -83,19 +83,89 @@ exports.login = async (req, res) => {
 // @access  Private
 exports.getMe = async (req, res) => {
   try {
+    console.log('Backend: Getting user profile for ID:', req.user.id);
     const user = await User.findById(req.user.id);
 
     if (!user) {
+      console.log('Backend: User not found for ID:', req.user.id);
       return res.status(404).json({ message: 'User not found' });
+    }
+
+    console.log('Backend: User found, has profileImage:', !!user.profileImage);
+    console.log('Backend: User found, has profileImageType:', !!user.profileImageType);
+
+    // Create a data URL for the profile image if one exists
+    let profileImageUrl = '';
+    if (user.profileImage && user.profileImageType) {
+      profileImageUrl = `data:${user.profileImageType};base64,${user.profileImage}`;
+      console.log('Backend: Created data URL with type:', user.profileImageType);
+    } else {
+      console.log('Backend: No profile image data available');
     }
 
     res.json({
       _id: user._id,
       name: user.name,
       email: user.email,
+      profileImage: profileImageUrl
     });
   } catch (error) {
     console.error('Get user error:', error);
+    res.status(500).json({
+      message: 'Server error',
+      error: error.message,
+    });
+  }
+};
+
+// @desc    Update user profile image
+// @route   POST /api/auth/profile-image
+// @access  Private
+exports.updateProfileImage = async (req, res) => {
+  try {
+    console.log('Backend: Processing profile image update for user:', req.user._id);
+    
+    if (!req.file) {
+      console.log('Backend: No file uploaded');
+      return res.status(400).json({ message: 'Please upload an image file' });
+    }
+
+    console.log('Backend: File received, mimetype:', req.file.mimetype);
+    console.log('Backend: File size:', req.file.size, 'bytes');
+
+    // Convert the buffer to base64
+    const base64Image = req.file.buffer.toString('base64');
+    console.log('Backend: Converted image to base64, length:', base64Image.length);
+    
+    // Get the image MIME type for later use when displaying
+    const imageType = req.file.mimetype;
+    
+    // Update user's profile image in MongoDB
+    console.log('Backend: Updating user profile with image data');
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { 
+        profileImage: base64Image,
+        profileImageType: imageType
+      },
+      { new: true }
+    );
+
+    if (!user) {
+      console.log('Backend: User not found after update attempt');
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    console.log('Backend: User profile updated successfully');
+    // For the response, create a data URL that can be used directly in <img> tags
+    const dataUrl = `data:${imageType};base64,${base64Image}`;
+
+    res.status(200).json({
+      success: true,
+      profileImage: dataUrl
+    });
+  } catch (error) {
+    console.error('Update profile image error:', error);
     res.status(500).json({
       message: 'Server error',
       error: error.message,

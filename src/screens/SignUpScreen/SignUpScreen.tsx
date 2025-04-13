@@ -9,6 +9,9 @@ import {
   TouchableOpacity,
   Image,
   ActivityIndicator,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Logo } from '../../components/Logo';
@@ -25,9 +28,9 @@ type SignUpScreenProps = {
 
 export const SignUpScreen = ({ navigation }: SignUpScreenProps) => {
   const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [termsAgreed, setTermsAgreed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -38,7 +41,7 @@ export const SignUpScreen = ({ navigation }: SignUpScreenProps) => {
     setError('');
     
     // Validate inputs
-    if (!firstName || !email || !password || !confirmPassword) {
+    if (!firstName || !lastName || !email || !password) {
       setError('All fields are required');
       return;
     }
@@ -47,15 +50,12 @@ export const SignUpScreen = ({ navigation }: SignUpScreenProps) => {
       setError('You must agree to the Terms & Conditions and Privacy Policy');
       return;
     }
-    
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
 
     try {
       setIsLoading(true);
-      await register(email, password, firstName);
+      // Use both first and last name in the registration
+      const fullName = `${firstName} ${lastName}`;
+      await register(email, password, fullName);
       // Navigation is handled by the Auth context
     } catch (err: any) {
       setError(err.message || 'Registration failed. Please try again.');
@@ -65,7 +65,7 @@ export const SignUpScreen = ({ navigation }: SignUpScreenProps) => {
   };
 
   const handleBackToLogin = () => {
-    navigation.navigate('Welcome');
+    navigation.goBack();
   };
 
   const toggleTermsAgreement = () => {
@@ -87,104 +87,118 @@ export const SignUpScreen = ({ navigation }: SignUpScreenProps) => {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="white" />
       
-      {/* Logo */}
-      <View style={styles.logoContainer}>
-        <Logo width={scaleWidth(92)} height={scaleWidth(63)} />
-      </View>
-
-      {/* Back to Login Button */}
-      <View style={styles.backToLoginContainer}>
-        <TouchableOpacity 
-          style={styles.backToLoginButton} 
-          onPress={handleBackToLogin}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardAvoidingView}
+      >
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
-          <Image
-            source={require('../../../assets/gray-back-arrow.png')}
-            style={styles.backArrowIcon}
-          />
-          <Text style={styles.backToLoginText}>Back to Login</Text>
-        </TouchableOpacity>
-      </View>
+          {/* Logo */}
+          <View style={styles.logoContainer}>
+            <Logo width={scaleWidth(92)} height={scaleWidth(63)} />
+          </View>
 
-      {/* Sign Up Text */}
-      <Text style={styles.title}>Sign Up</Text>
-
-      {/* Input Fields */}
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.input}
-          placeholder="First Name"
-          value={firstName}
-          onChangeText={setFirstName}
-          autoCapitalize="words"
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          keyboardType="email-address"
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Confirm Password"
-          value={confirmPassword}
-          onChangeText={setConfirmPassword}
-          secureTextEntry
-        />
-        
-        {/* Terms and Conditions Agreement */}
-        <View style={styles.termsContainer}>
-          <TouchableOpacity 
-            style={styles.checkboxContainer}
-            onPress={toggleTermsAgreement}
-            activeOpacity={0.7}
-          >
-            <View style={[
-              styles.checkbox, 
-              termsAgreed && styles.checkboxChecked
-            ]} />
-          </TouchableOpacity>
-          
-          <View style={styles.termsTextContainer}>
-            <Text style={styles.termsText}>
-              I agree to the{' '}
-            </Text>
-            <TouchableOpacity onPress={navigateToTerms}>
-              <Text style={[styles.termsText, styles.termsTextUnderlined]}>
-                Terms & Conditions
-              </Text>
-            </TouchableOpacity>
-            <Text style={styles.termsText}>
-              {' '}and{' '}
-            </Text>
-            <TouchableOpacity onPress={navigateToPrivacy}>
-              <Text style={[styles.termsText, styles.termsTextUnderlined]}>
-                Privacy Policy
-              </Text>
+          {/* Back to Login Button */}
+          <View style={styles.backToLoginContainer}>
+            <TouchableOpacity 
+              style={styles.backToLoginButton} 
+              onPress={handleBackToLogin}
+            >
+              <Image
+                source={require('../../../assets/gray-back-arrow.png')}
+                style={styles.backArrowIcon}
+              />
+              <Text style={styles.backToLoginText}>Back to Login</Text>
             </TouchableOpacity>
           </View>
-        </View>
-        
-        {/* Continue Button right below the confirm password field */}
-        <View style={styles.buttonContainer}>
-          {isLoading ? (
-            <ActivityIndicator size="large" color="#CA5A5E" />
-          ) : (
-            <ContinueButton onPress={handleSignUp} />
-          )}
-        </View>
-      </View>
 
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+          {/* Sign Up Text */}
+          <Text style={styles.title}>Sign Up</Text>
+
+          {/* Input Fields */}
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={styles.input}
+              placeholder="First Name"
+              value={firstName}
+              onChangeText={setFirstName}
+              autoCapitalize="words"
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Last Name"
+              value={lastName}
+              onChangeText={setLastName}
+              autoCapitalize="words"
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Email"
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Password"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+            />
+            
+            {/* Terms and Conditions Agreement */}
+            <View style={styles.termsContainer}>
+              <TouchableOpacity 
+                style={styles.checkboxContainer}
+                onPress={toggleTermsAgreement}
+                activeOpacity={0.7}
+              >
+                <View style={[
+                  styles.checkbox, 
+                  termsAgreed && styles.checkboxChecked
+                ]} />
+              </TouchableOpacity>
+              
+              <View style={styles.termsTextContainer}>
+                <Text style={styles.termsText}>
+                  I agree to the{' '}
+                </Text>
+                <TouchableOpacity onPress={navigateToTerms}>
+                  <Text style={[styles.termsText, styles.termsTextUnderlined]}>
+                    Terms & Conditions
+                  </Text>
+                </TouchableOpacity>
+                <Text style={styles.termsText}>
+                  {' '}and{' '}
+                </Text>
+                <TouchableOpacity onPress={navigateToPrivacy}>
+                  <Text style={[styles.termsText, styles.termsTextUnderlined]}>
+                    Privacy Policy
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+            
+            {/* Continue Button right below the confirm password field */}
+            <View style={styles.buttonContainer}>
+              {isLoading ? (
+                <ActivityIndicator size="large" color="#CA5A5E" />
+              ) : (
+                <ContinueButton onPress={handleSignUp} />
+              )}
+            </View>
+          </View>
+
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+          
+          {/* Extra padding at the bottom for better scrolling */}
+          <View style={styles.bottomPadding} />
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
@@ -193,8 +207,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: 'white',
+  },
+  keyboardAvoidingView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
     alignItems: 'center',
-    padding: scaleWidth(20),
+    paddingHorizontal: scaleWidth(20),
   },
   logoContainer: {
     marginTop: scaleWidth(50),
@@ -273,6 +293,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
+    marginTop: scaleWidth(8),
   },
   termsText: {
     fontSize: scaleWidth(12),
@@ -282,6 +303,7 @@ const styles = StyleSheet.create({
   },
   termsTextUnderlined: {
     textDecorationLine: 'underline',
+    
   },
   errorText: {
     color: '#CA5A5E',
@@ -293,5 +315,8 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'flex-end',
     marginTop: scaleWidth(8),
+  },
+  bottomPadding: {
+    height: scaleWidth(30),
   }
 }); 
