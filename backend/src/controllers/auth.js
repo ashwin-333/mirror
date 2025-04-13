@@ -28,7 +28,6 @@ exports.register = async (req, res) => {
       email,
       password,
       profileImage: '', // Explicitly set empty profile image
-      profileImageType: ''
     });
 
     if (user) {
@@ -67,6 +66,7 @@ exports.login = async (req, res) => {
         _id: user._id,
         name: user.name,
         email: user.email,
+        profileImage: user.profileImage || '',
         token: generateToken(user._id),
       });
     } else {
@@ -95,22 +95,12 @@ exports.getMe = async (req, res) => {
     }
 
     console.log('Backend: User found, has profileImage:', !!user.profileImage);
-    console.log('Backend: User found, has profileImageType:', !!user.profileImageType);
-
-    // Create a data URL for the profile image if one exists
-    let profileImageUrl = '';
-    if (user.profileImage && user.profileImageType) {
-      profileImageUrl = `data:${user.profileImageType};base64,${user.profileImage}`;
-      console.log('Backend: Created data URL with type:', user.profileImageType);
-    } else {
-      console.log('Backend: No profile image data available');
-    }
 
     res.json({
       _id: user._id,
       name: user.name,
       email: user.email,
-      profileImage: profileImageUrl
+      profileImage: user.profileImage || ''
     });
   } catch (error) {
     console.error('Get user error:', error);
@@ -133,24 +123,23 @@ exports.updateProfileImage = async (req, res) => {
       return res.status(400).json({ message: 'Please upload an image file' });
     }
 
-    console.log('Backend: File received, mimetype:', req.file.mimetype);
-    console.log('Backend: File size:', req.file.size, 'bytes');
-
-    // Convert the buffer to base64
-    const base64Image = req.file.buffer.toString('base64');
-    console.log('Backend: Converted image to base64, length:', base64Image.length);
+    console.log('Backend: File received:', req.file.filename);
     
-    // Get the image MIME type for later use when displaying
-    const imageType = req.file.mimetype;
+    // Get server URL (based on request)
+    const protocol = req.protocol || 'http';
+    const host = process.env.DEVELOPER_IP || req.get('host') || 'localhost';
+    const port = process.env.PORT || 5002;
     
-    // Update user's profile image in MongoDB
-    console.log('Backend: Updating user profile with image data');
+    // Create a clean URL to the uploaded file
+    const fileName = req.file.filename; // This should already be sanitized by multer
+    const fileUrl = `${protocol}://${host}:${port}/uploads/${fileName}`;
+    
+    console.log('Backend: Created file URL:', fileUrl);
+    
+    // Update user's profile image URL
     const user = await User.findByIdAndUpdate(
       req.user._id,
-      { 
-        profileImage: base64Image,
-        profileImageType: imageType
-      },
+      { profileImage: fileUrl },
       { new: true }
     );
 
@@ -160,12 +149,10 @@ exports.updateProfileImage = async (req, res) => {
     }
 
     console.log('Backend: User profile updated successfully');
-    // For the response, create a data URL that can be used directly in <img> tags
-    const dataUrl = `data:${imageType};base64,${base64Image}`;
 
     res.status(200).json({
       success: true,
-      profileImage: dataUrl
+      profileImage: fileUrl
     });
   } catch (error) {
     console.error('Update profile image error:', error);

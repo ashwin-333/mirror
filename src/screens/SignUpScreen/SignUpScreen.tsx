@@ -17,6 +17,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Logo } from '../../components/Logo';
 import { ContinueButton } from '../../components/ContinueButton';
 import { useAuth } from '../../context/AuthContext';
+import { EyeSvg } from '../../components/EyeSvg';
+import { NoEyeSvg } from '../../components/NoEyeSvg';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const BASE_WIDTH = 393;
@@ -31,10 +33,15 @@ export const SignUpScreen = ({ navigation }: SignUpScreenProps) => {
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [termsAgreed, setTermsAgreed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { register } = useAuth();
+
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
 
   const handleSignUp = async () => {
     // Reset error
@@ -142,13 +149,25 @@ export const SignUpScreen = ({ navigation }: SignUpScreenProps) => {
               autoCapitalize="none"
               keyboardType="email-address"
             />
-            <TextInput
-              style={styles.input}
-              placeholder="Password"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-            />
+            <View style={styles.passwordContainer}>
+              <TextInput
+                style={styles.passwordInput}
+                placeholder="Password"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+              />
+              <TouchableOpacity 
+                style={styles.eyeIconContainer}
+                onPress={togglePasswordVisibility}
+              >
+                {showPassword ? (
+                  <EyeSvg width={scaleWidth(24)} height={scaleWidth(24)} color="black" />
+                ) : (
+                  <NoEyeSvg width={scaleWidth(24)} height={scaleWidth(24)} color="black" />
+                )}
+              </TouchableOpacity>
+            </View>
             
             {/* Terms and Conditions Agreement */}
             <View style={styles.termsContainer}>
@@ -264,6 +283,25 @@ const styles = StyleSheet.create({
     fontSize: scaleWidth(18),
     fontFamily: 'InstrumentSans-Regular',
     letterSpacing: -1,
+  },
+  passwordContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    height: scaleWidth(50),
+    borderRadius: scaleWidth(25),
+    backgroundColor: '#F5F5F5',
+    paddingHorizontal: scaleWidth(20),
+  },
+  passwordInput: {
+    flex: 1,
+    height: '100%',
+    fontSize: scaleWidth(18),
+    fontFamily: 'InstrumentSans-Regular',
+    letterSpacing: -1,
+  },
+  eyeIconContainer: {
+    padding: scaleWidth(5),
   },
   termsContainer: {
     flexDirection: 'row',

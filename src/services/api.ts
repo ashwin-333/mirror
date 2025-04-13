@@ -196,13 +196,17 @@ export const authService = {
       
       // Get file name and extension from URI
       const uriParts = imageUri.split('/');
-      const fileName = uriParts[uriParts.length - 1];
+      let fileName = uriParts[uriParts.length - 1];
+      
+      // Sanitize filename to avoid special characters
+      // Replace problematic characters with safe alternatives
+      fileName = fileName.replace(/[=&?%+]/g, '_');
       
       // Get file type based on extension
       const fileType = fileName.split('.').pop()?.toLowerCase() || 'jpg';
       const mimeType = fileType === 'jpg' || fileType === 'jpeg' ? 'image/jpeg' : `image/${fileType}`;
       
-      console.log('API Service: Image details:', { fileName, fileType, mimeType });
+      console.log('API Service: Sanitized image details:', { fileName, fileType, mimeType });
       
       // Create the file object
       const file = {

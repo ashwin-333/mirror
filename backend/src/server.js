@@ -28,6 +28,13 @@ app.use((req, res, next) => {
   next();
 });
 
+// Serve static files from the uploads directory
+app.use('/uploads', (req, res, next) => {
+  // Log the requested file
+  console.log('Static file request for:', req.url);
+  next();
+}, express.static(path.join(__dirname, '../uploads')));
+
 // Routes
 app.use('/api/auth', authRoutes);
 

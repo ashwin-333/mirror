@@ -89,8 +89,8 @@ export const ProfileScreen: React.FC = () => {
     }));
     
     if (user?.profileImage) {
-      console.log('ProfileScreen: Using profile image from user data');
-      // The image is now a complete data URL ready to use
+      console.log('ProfileScreen: Using profile image from user data:', user.profileImage);
+      // The image is now a URL from the server
       setProfileImage(user.profileImage);
       // Also save to local storage as a fallback
       saveProfileImageToLocalStorage(user.profileImage);
@@ -149,9 +149,24 @@ export const ProfileScreen: React.FC = () => {
         const selectedImageUri = result.assets[0].uri;
         
         try {
+          // Sanitize the URI before upload in case it has special characters
+          // First get proper file info
+          const uriParts = selectedImageUri.split('/');
+          const originalName = uriParts[uriParts.length - 1];
+          
+          // Check for problematic characters in the filename
+          if (originalName.includes('=') || originalName.includes('?') || originalName.includes('&')) {
+            console.log('ProfileScreen: Detected special characters in filename:', originalName);
+            
+            // Create a temporary file with a sanitized name if needed
+            // For most cases, the upload middleware will handle this on the server
+          }
+          
+          console.log('ProfileScreen: Uploading image with URI:', selectedImageUri);
+          
           // Upload image to server
           const serverImageUrl = await authService.uploadProfileImage(selectedImageUri);
-          console.log('ProfileScreen: Image uploaded to server, URL:', typeof serverImageUrl);
+          console.log('ProfileScreen: Image uploaded to server, URL:', serverImageUrl);
           
           // Immediately refresh user data to get the updated profile image from MongoDB
           await checkUserStatus();
@@ -341,6 +356,10 @@ export const ProfileScreen: React.FC = () => {
               <Image
                 source={profileImage ? { uri: profileImage } : require('../../../assets/profile-avatar.png')}
                 style={styles.profileImage}
+                onError={(error) => {
+                  console.error('Image loading error:', error.nativeEvent.error);
+                  setProfileImage(null);
+                }}
               />
             )}
             <TouchableOpacity 

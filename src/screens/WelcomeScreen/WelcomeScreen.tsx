@@ -16,6 +16,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Logo } from '../../components/Logo';
 import { useAuth } from '../../context/AuthContext';
+import { EyeSvg } from '../../components/EyeSvg';
+import { NoEyeSvg } from '../../components/NoEyeSvg';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const BASE_WIDTH = 393;
@@ -30,6 +32,7 @@ export const WelcomeScreen = ({ navigation }: WelcomeScreenProps) => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const { login } = useAuth();
 
   const handleLogin = async () => {
@@ -85,13 +88,25 @@ export const WelcomeScreen = ({ navigation }: WelcomeScreenProps) => {
               autoCapitalize="none"
               keyboardType="email-address"
             />
-            <TextInput
-              style={styles.input}
-              placeholder="Password"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-            />
+            <View style={styles.passwordContainer}>
+              <TextInput
+                style={styles.passwordInput}
+                placeholder="Password"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+              />
+              <TouchableOpacity 
+                style={styles.eyeIcon} 
+                onPress={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? (
+                  <EyeSvg width={scaleWidth(22)} height={scaleWidth(22)} color="black" />
+                ) : (
+                  <NoEyeSvg width={scaleWidth(22)} height={scaleWidth(22)} color="black" />
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
 
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -249,5 +264,25 @@ const styles = StyleSheet.create({
   },
   bottomPadding: {
     height: scaleWidth(30),
-  }
+  },
+  passwordContainer: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: scaleWidth(25),
+    backgroundColor: '#F5F5F5',
+    height: scaleWidth(50),
+  },
+  passwordInput: {
+    flex: 1,
+    height: scaleWidth(50),
+    paddingHorizontal: scaleWidth(20),
+    fontSize: scaleWidth(18),
+    fontFamily: 'InstrumentSans-Regular',
+    letterSpacing: -1,
+  },
+  eyeIcon: {
+    padding: scaleWidth(10),
+    marginRight: scaleWidth(5),
+  },
 }); 

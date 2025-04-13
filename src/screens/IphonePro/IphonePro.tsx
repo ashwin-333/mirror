@@ -53,8 +53,8 @@ export const IphonePro = ({ navigation }: IphoneProProps): JSX.Element => {
       
       // First check if user has a profile image in their data (from server)
       if (user?.profileImage) {
-        console.log('IphonePro: Using profile image from user data');
-        // The image is now a complete data URL from the server
+        console.log('IphonePro: Using profile image from user data:', user.profileImage);
+        // The image is now a URL from the server (could be absolute or relative)
         setProfileImage(user.profileImage);
       } else {
         console.log('IphonePro: No profile image in user data, using default avatar');
@@ -64,6 +64,7 @@ export const IphonePro = ({ navigation }: IphoneProProps): JSX.Element => {
       }
     } catch (error) {
       console.error('Error loading profile image:', error);
+      setProfileImage(null);
     } finally {
       setLoadingImage(false);
     }
@@ -149,6 +150,10 @@ export const IphonePro = ({ navigation }: IphoneProProps): JSX.Element => {
                 source={profileImage ? { uri: profileImage } : require("../../../assets/profile-avatar.png")}
                 style={styles.profileImage}
                 resizeMode="cover"
+                onError={(error) => {
+                  console.error('Image loading error:', error.nativeEvent.error);
+                  setProfileImage(null);
+                }}
               />
             )}
           </TouchableOpacity>
