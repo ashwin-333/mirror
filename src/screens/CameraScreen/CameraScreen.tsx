@@ -7,12 +7,15 @@ import {
   Dimensions,
   StatusBar,
   Image,
+  Linking,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as MediaLibrary from 'expo-media-library';
+import * as ImagePicker from 'expo-image-picker';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const BASE_WIDTH = 393;
 const scaleWidth = (size: number) => (size / BASE_WIDTH) * SCREEN_WIDTH;
 
@@ -29,6 +32,7 @@ export const CameraScreen = ({ navigation, route }: CameraScreenProps) => {
   const { mode } = route.params;
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [permission, requestPermission] = useCameraPermissions();
+  const [mediaLibraryPermission, setMediaLibraryPermission] = useState<boolean>(false);
   
   // Use regular ref for CameraView
   const cameraRef = useRef<any>(null);
@@ -44,12 +48,30 @@ export const CameraScreen = ({ navigation, route }: CameraScreenProps) => {
         setHasPermission(permission.status === 'granted');
       }
       
-      // Request media library permissions
-      await MediaLibrary.requestPermissionsAsync();
+      // Check media library permissions
+      const mediaLibraryStatus = await MediaLibrary.getPermissionsAsync();
+      setMediaLibraryPermission(mediaLibraryStatus.status === 'granted');
     })();
   }, [permission, requestPermission]);
 
   const handleCapture = async () => {
+    if (!hasPermission) {
+      // If no permission, request it again
+      const { status } = await requestPermission();
+      if (status !== 'granted') {
+        Alert.alert(
+          "Camera Permission Required",
+          "We need camera access to take photos. Please enable it in your settings.",
+          [
+            { text: "Cancel", style: "cancel" },
+            { text: "Open Settings", onPress: () => Linking.openSettings() }
+          ]
+        );
+        return;
+      }
+      setHasPermission(true);
+    }
+    
     if (cameraRef.current) {
       try {
         const photo = await cameraRef.current.takePictureAsync();
@@ -60,6 +82,44 @@ export const CameraScreen = ({ navigation, route }: CameraScreenProps) => {
       }
     } else {
       navigation.navigate('Loading', { mode });
+    }
+  };
+
+  const handleSelectPhoto = async () => {
+    // Check and request permission
+    try {
+      const { status } = await ImagePicker.getMediaLibraryPermissionsAsync();
+      
+      if (status !== 'granted') {
+        const { status: newStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        
+        if (newStatus !== 'granted') {
+          Alert.alert(
+            "Gallery Access Required",
+            "We need access to your photo library. Please enable it in your settings.",
+            [
+              { text: "Cancel", style: "cancel" },
+              { text: "Open Settings", onPress: () => Linking.openSettings() }
+            ]
+          );
+          return;
+        }
+      }
+      
+      // Launch image picker
+      let result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 1,
+      });
+      
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        // Navigate to the loading screen with the selected image URI
+        navigation.navigate('Loading', { mode, photoUri: result.assets[0].uri });
+      }
+    } catch (error) {
+      console.error('Error selecting photo:', error);
     }
   };
 
@@ -86,6 +146,12 @@ export const CameraScreen = ({ navigation, route }: CameraScreenProps) => {
           <Text style={styles.text}>No access to camera</Text>
           <TouchableOpacity
             style={styles.permissionButton}
+            onPress={() => Linking.openSettings()}
+          >
+            <Text style={styles.permissionButtonText}>Open Settings</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.permissionButton, { marginTop: 10, backgroundColor: '#666' }]}
             onPress={() => navigation.navigate('Loading', { mode })}
           >
             <Text style={styles.permissionButtonText}>Continue Anyway</Text>
@@ -95,119 +161,127 @@ export const CameraScreen = ({ navigation, route }: CameraScreenProps) => {
     );
   }
 
+  // Navigation items data
+  const navigationItems = [
+    { icon: require('../../../assets/home.png'), active: false, onPress: () => navigation.navigate('Home') },
+    { icon: require('../../../assets/arrow.png'), active: false },
+    { icon: require('../../../assets/scan.png'), active: true },
+    { icon: require('../../../assets/arrow.png'), active: false },
+    { icon: require('../../../assets/wand.png'), active: false },
+    { icon: require('../../../assets/arrow.png'), active: false },
+    { icon: require('../../../assets/tag.png'), active: false },
+  ];
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="light-content" backgroundColor="black" />
-      <View style={styles.cameraContainer}>
-        {hasPermission ? (
-          <CameraView
-            ref={cameraRef}
-            style={styles.camera}
-            facing={cameraFacing}
-          >
-            <View style={styles.overlayContainer}>
-              {/* Header text */}
-              <View style={styles.instructionsContainer}>
-                <Text style={styles.title}>
-                  Snap a picture when you're ready!
-                </Text>
-                <Text style={styles.subtitle}>
-                  Please make sure you're not wearing makeup{'\n'}and positioned under good lighting.
-                </Text>
+      <View style={styles.mainContainer}>
+        <View style={styles.cameraContainer}>
+          {hasPermission ? (
+            <CameraView
+              ref={cameraRef}
+              style={styles.camera}
+              facing={cameraFacing}
+            >
+              <View style={styles.overlayContainer}>
+                {/* Header text */}
+                <View style={styles.instructionsContainer}>
+                  <Text style={styles.title}>
+                    Snap a picture when you're ready!
+                  </Text>
+                  <Text style={styles.subtitle}>
+                    Please make sure you're not wearing makeup{'\n'}and positioned under good lighting.
+                  </Text>
+                </View>
+
+                {/* Oval face guide */}
+                <View style={styles.ovalFrame} />
+
+                {/* Camera controls */}
+                <View style={styles.cameraControls}>
+                  <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+                    <Text style={styles.backButtonText}>{'<'}</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.captureButton}
+                    onPress={handleCapture}
+                  >
+                    <View style={styles.captureButtonInner} />
+                  </TouchableOpacity>
+
+                  <TouchableOpacity style={styles.galleryButton} onPress={handleSelectPhoto}>
+                    <Image
+                      source={require('../../../assets/pics.png')}
+                      style={styles.galleryIcon}
+                      resizeMode="contain"
+                    />
+                  </TouchableOpacity>
+                </View>
               </View>
-
-              {/* Oval face guide */}
-              <View style={styles.ovalFrame} />
-
-              {/* Camera controls */}
-              <View style={styles.cameraControls}>
-                <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-                  <Text style={styles.backButtonText}>{'<'}</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.captureButton}
-                  onPress={handleCapture}
-                >
-                  <View style={styles.captureButtonInner} />
-                </TouchableOpacity>
-
-                <TouchableOpacity style={styles.galleryButton}>
-                  <Image
-                    source={require('../../../assets/pics.png')}
-                    style={styles.galleryIcon}
-                    resizeMode="contain"
-                  />
-                </TouchableOpacity>
+            </CameraView>
+          ) : (
+            // Fallback view if somehow permissions are not granted
+            <View style={styles.mockCamera}>
+              <View style={styles.overlayContainer}>
+                <View style={styles.instructionsContainer}>
+                  <Text style={styles.title}>
+                    Snap a picture when you're ready!
+                  </Text>
+                  <Text style={styles.subtitle}>
+                    Please make sure you're not wearing makeup{'\n'}and positioned under good lighting.
+                  </Text>
+                </View>
+                <View style={styles.ovalFrame} />
+                <View style={styles.cameraControls}>
+                  <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+                    <Text style={styles.backButtonText}>{'<'}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.captureButton}
+                    onPress={handleCapture}
+                  >
+                    <View style={styles.captureButtonInner} />
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.galleryButton} onPress={handleSelectPhoto}>
+                    <Image
+                      source={require('../../../assets/pics.png')}
+                      style={styles.galleryIcon}
+                      resizeMode="contain"
+                    />
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
-          </CameraView>
-        ) : (
-          // Fallback view if somehow permissions are not granted
-          <View style={styles.mockCamera}>
-            <View style={styles.overlayContainer}>
-              <View style={styles.instructionsContainer}>
-                <Text style={styles.title}>
-                  Snap a picture when you're ready!
-                </Text>
-                <Text style={styles.subtitle}>
-                  Please make sure you're not wearing makeup{'\n'}and positioned under good lighting.
-                </Text>
-              </View>
-              <View style={styles.ovalFrame} />
-              <View style={styles.cameraControls}>
-                <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-                  <Text style={styles.backButtonText}>{'<'}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.captureButton}
-                  onPress={handleCapture}
-                >
-                  <View style={styles.captureButtonInner} />
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.galleryButton}>
-                  <Image
-                    source={require('../../../assets/pics.png')}
-                    style={styles.galleryIcon}
-                    resizeMode="contain"
-                  />
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        )}
+          )}
+        </View>
       </View>
 
       {/* Bottom navigation */}
       <View style={styles.navBarContainer}>
         <View style={styles.bottomNav}>
-          <TouchableOpacity onPress={() => navigation.navigate('Home')}>
-            <Image
-              source={require('../../../assets/home.png')}
-              style={styles.navIcon}
-            />
-          </TouchableOpacity>
-          <Text style={styles.navArrow}>{'>'}</Text>
-          <View style={styles.activeNavItemContainer}>
-            <Image
-              source={require('../../../assets/scan.png')}
-              style={styles.navIcon}
-            />
-          </View>
-          <Text style={styles.navArrow}>{'>'}</Text>
-          <TouchableOpacity>
-            <Image
-              source={require('../../../assets/wand.png')}
-              style={styles.navIcon}
-            />
-          </TouchableOpacity>
-          <Text style={styles.navArrow}>{'>'}</Text>
-          <TouchableOpacity>
-            <Image
-              source={require('../../../assets/tag.png')}
-              style={styles.navIcon}
-            />
-          </TouchableOpacity>
+          {navigationItems.map((item, index) => (
+            <TouchableOpacity
+              key={index}
+              style={[
+                styles.navItem,
+                item.active && styles.activeNavItem
+              ]}
+              onPress={item.onPress}
+              disabled={!item.onPress}
+            >
+              <Image
+                source={item.icon}
+                style={[
+                  styles.navIcon,
+                  // The arrow icons were half the size (12x12) of the main icons (24x24)
+                  index % 2 === 1 ? styles.arrowIcon : styles.mainIcon,
+                ]}
+                tintColor={index === 0 ? '#000000' : item.active ? '#FFFFFF' : undefined}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
+          ))}
         </View>
       </View>
     </SafeAreaView>
@@ -217,7 +291,14 @@ export const CameraScreen = ({ navigation, route }: CameraScreenProps) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'black',
+    backgroundColor: 'white',
+  },
+  mainContainer: {
+    flex: 1,
+    backgroundColor: 'white',
+    paddingVertical: scaleWidth(10),
+    paddingHorizontal: scaleWidth(10),
+    paddingBottom: scaleWidth(90),
   },
   center: {
     flex: 1,
@@ -226,7 +307,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   text: {
-    color: 'white',
+    color: 'black',
     fontSize: 18,
     textAlign: 'center',
     marginBottom: 20,
@@ -246,125 +327,142 @@ const styles = StyleSheet.create({
   cameraContainer: {
     flex: 1,
     width: '100%',
+    borderRadius: scaleWidth(20),
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'white',
+    marginBottom: scaleWidth(15),
   },
   camera: {
     flex: 1,
-    width: '100%',
-  },
-  mockCamera: {
-    flex: 1,
-    width: '100%',
     backgroundColor: 'black',
+    borderBottomLeftRadius: scaleWidth(20),
+    borderBottomRightRadius: scaleWidth(20),
   },
   overlayContainer: {
     flex: 1,
     backgroundColor: 'transparent',
+    flexDirection: 'column',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: scaleWidth(20),
+    padding: 20,
   },
   instructionsContainer: {
     alignItems: 'center',
-    paddingTop: scaleWidth(20),
-    paddingHorizontal: scaleWidth(20),
+    marginTop: 20,
   },
   title: {
     color: 'white',
-    fontSize: scaleWidth(24),
+    fontSize: 24,
     fontWeight: 'bold',
     textAlign: 'center',
-    marginBottom: scaleWidth(8),
-    fontFamily: 'InstrumentSans-Bold',
+    marginBottom: 8,
   },
   subtitle: {
     color: 'white',
-    fontSize: scaleWidth(14),
+    fontSize: 16,
     textAlign: 'center',
     opacity: 0.8,
-    fontFamily: 'InstrumentSans-Regular',
-    lineHeight: scaleWidth(20),
   },
   ovalFrame: {
-    width: scaleWidth(250),
+    width: scaleWidth(240),
     height: scaleWidth(320),
-    borderWidth: 3,
-    borderColor: '#555',
-    borderRadius: scaleWidth(160),
+    borderRadius: scaleWidth(120),
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+    alignSelf: 'center',
   },
   cameraControls: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    width: '100%',
-    paddingHorizontal: scaleWidth(30),
-    paddingBottom: scaleWidth(20),
-    marginBottom: scaleWidth(20),
+    marginBottom: 20,
   },
   backButton: {
-    width: scaleWidth(44),
-    height: scaleWidth(44),
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   backButtonText: {
     color: 'white',
-    fontSize: scaleWidth(24),
+    fontSize: 24,
     fontWeight: 'bold',
   },
   captureButton: {
-    width: scaleWidth(70),
-    height: scaleWidth(70),
-    borderRadius: scaleWidth(35),
-    borderWidth: 3,
-    borderColor: 'white',
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: 'white',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'transparent',
   },
   captureButtonInner: {
-    width: scaleWidth(60),
-    height: scaleWidth(60),
-    borderRadius: scaleWidth(30),
-    backgroundColor: 'white',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    borderWidth: 2,
+    borderColor: 'black',
   },
   galleryButton: {
-    width: scaleWidth(44),
-    height: scaleWidth(44),
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   galleryIcon: {
-    width: scaleWidth(32),
-    height: scaleWidth(32),
+    width: 28,
+    height: 28,
+    tintColor: 'white',
+  },
+  mockCamera: {
+    flex: 1,
+    backgroundColor: 'black',
+    justifyContent: 'space-between',
+    borderBottomLeftRadius: scaleWidth(20),
+    borderBottomRightRadius: scaleWidth(20),
   },
   navBarContainer: {
-    width: '100%',
+    position: 'absolute',
+    bottom: scaleWidth(30),
+    left: 0,
+    right: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: scaleWidth(15),
     backgroundColor: 'white',
+    paddingVertical: scaleWidth(8),
   },
   bottomNav: {
     flexDirection: 'row',
-    justifyContent: 'space-evenly',
+    justifyContent: 'space-around',
     alignItems: 'center',
     width: '90%',
+    paddingVertical: scaleWidth(8),
+    backgroundColor: 'white',
+  },
+  navItem: {
+    width: scaleWidth(42),
+    height: scaleWidth(42),
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: scaleWidth(21),
+  },
+  activeNavItem: {
+    backgroundColor: '#ca5a5e',
   },
   navIcon: {
+    resizeMode: 'contain',
+  },
+  mainIcon: {
     width: scaleWidth(24),
     height: scaleWidth(24),
   },
-  navArrow: {
-    fontSize: scaleWidth(16),
-    color: '#888',
-  },
-  activeNavItemContainer: {
-    backgroundColor: '#CA5A5E',
-    width: scaleWidth(44),
-    height: scaleWidth(44),
-    borderRadius: scaleWidth(22),
-    justifyContent: 'center',
-    alignItems: 'center',
+  arrowIcon: {
+    width: scaleWidth(12),
+    height: scaleWidth(12),
   },
 });
 
