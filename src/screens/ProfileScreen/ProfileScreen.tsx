@@ -13,6 +13,7 @@ import {
   LayoutAnimation,
   Alert,
   ActivityIndicator,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -40,10 +41,25 @@ type ProfileScreenProps = StackNavigationProp<RootStackParamList, 'Profile'>;
 
 // Product type definition
 type Product = {
-  id: number;
+  id: number | string;
   name: string;
   subtext: string;
   image: any;
+  url?: string;
+  brand?: string;
+  category?: 'skin' | 'hair';
+};
+
+// Bookmark type definition
+type Bookmark = {
+  _id?: string;
+  name: string;
+  description: string;
+  image: string;
+  url?: string;
+  brand: string;
+  category: 'skin' | 'hair';
+  productId: string;
 };
 
 // Mock product data
@@ -78,6 +94,11 @@ export const ProfileScreen: React.FC = () => {
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [loadingImage, setLoadingImage] = useState(false);
   
+  // State for bookmarks
+  const [skinBookmarks, setSkinBookmarks] = useState<Product[]>([]);
+  const [hairBookmarks, setHairBookmarks] = useState<Product[]>([]);
+  const [isLoadingBookmarks, setIsLoadingBookmarks] = useState(false);
+  
   // Load profile image when user data changes
   useEffect(() => {
     console.log('ProfileScreen: User object changed:', JSON.stringify({
@@ -101,6 +122,9 @@ export const ProfileScreen: React.FC = () => {
         setProfileImage(null);
       });
     }
+    
+    // Load bookmarks when user changes
+    loadBookmarks();
   }, [user]);
   
   // Load profile image from local storage (fallback)
@@ -124,6 +148,60 @@ export const ProfileScreen: React.FC = () => {
     }
   };
   
+  // Load bookmarks from the server
+  const loadBookmarks = async () => {
+    if (!user) return;
+    
+    try {
+      setIsLoadingBookmarks(true);
+      const response = await authService.getBookmarks();
+      console.log('Loaded bookmarks response:', response);
+      
+      if (response.success && response.data) {
+        const skinProducts: Product[] = [];
+        const hairProducts: Product[] = [];
+        
+        // Convert database bookmarks to UI products
+        response.data.forEach((bookmark: Bookmark) => {
+          console.log('Processing bookmark:', bookmark);
+          
+          // Create the product with proper image handling
+          const product: Product = {
+            id: bookmark.productId,
+            name: bookmark.brand || '',
+            subtext: bookmark.name || bookmark.description || '',
+            image: bookmark.image && bookmark.image.length > 0
+              ? { uri: bookmark.image }
+              : require('../../../assets/example-cleanser.png'),
+            url: bookmark.url,
+            brand: bookmark.brand,
+            category: bookmark.category
+          };
+          
+          console.log('Created product with image:', typeof product.image, product.image);
+          
+          if (bookmark.category === 'skin') {
+            skinProducts.push(product);
+          } else if (bookmark.category === 'hair') {
+            hairProducts.push(product);
+          }
+        });
+        
+        setSkinBookmarks(skinProducts);
+        setHairBookmarks(hairProducts);
+      }
+    } catch (error) {
+      console.error('Error loading bookmarks:', error);
+      // Fall back to mock data if loading fails
+      if (skinBookmarks.length === 0 && hairBookmarks.length === 0) {
+        setSkinBookmarks(skinProducts);
+        setHairBookmarks(hairProducts);
+      }
+    } finally {
+      setIsLoadingBookmarks(false);
+    }
+  };
+  
   // Handle profile image editing
   const handleEditProfileImage = async () => {
     try {
@@ -131,7 +209,7 @@ export const ProfileScreen: React.FC = () => {
       const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
       
       if (!permissionResult.granted) {
-        Alert.alert('Permission Required', 'You need to allow access to your photos to change your profile picture.');
+        // Removed Alert - silent fail for permission requirement
         return;
       }
       
@@ -182,55 +260,57 @@ export const ProfileScreen: React.FC = () => {
           setProfileImage(selectedImageUri);
           saveProfileImageToLocalStorage(selectedImageUri);
           
-          Alert.alert(
-            'Warning', 
-            'Your image was saved locally but could not be uploaded to the server. It may not sync across devices.'
-          );
+          // Removed Alert - silent fail for image upload errors
         }
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to pick image. Please try again.');
+      // Removed Alert - silent fail for image picking errors
       console.error('Error picking image:', error);
     } finally {
       setLoadingImage(false);
     }
   };
   
-  // Bookmarked states
-  const [bookmarkedSkin, setBookmarkedSkin] = useState<{ [key: number]: boolean }>({
-    1: true, 2: true, 3: true,
-  });
-  const [bookmarkedHair, setBookmarkedHair] = useState<{ [key: number]: boolean }>({
-    1: true, 2: true, 3: true,
-  });
-
   // Confirmation modal states
   const [modalVisible, setModalVisible] = useState(false);
-  const [currentProduct, setCurrentProduct] = useState<{section: 'skin' | 'hair', productId: number} | null>(null);
+  const [currentProduct, setCurrentProduct] = useState<{section: 'skin' | 'hair', productId: number | string} | null>(null);
 
-  // Show confirmation modal
-  const showRemoveBookmarkModal = (section: 'skin' | 'hair', productId: number) => {
-    // Only show modal if bookmark is currently active
-    const isCurrentlyBookmarked = section === 'skin' 
-      ? bookmarkedSkin[productId] 
-      : bookmarkedHair[productId];
-    
-    if (isCurrentlyBookmarked) {
-      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-      setCurrentProduct({ section, productId });
-      setModalVisible(true);
-    } else {
-      // If not bookmarked, just toggle directly (add bookmark)
-      toggleBookmark(section, productId);
-    }
+  // Show confirmation modal for removing bookmark
+  const showRemoveBookmarkModal = (section: 'skin' | 'hair', productId: number | string) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setCurrentProduct({ section, productId });
+    setModalVisible(true);
   };
 
   // Confirm bookmark removal
-  const confirmRemoveBookmark = () => {
-    if (currentProduct) {
-      toggleBookmark(currentProduct.section, currentProduct.productId);
+  const confirmRemoveBookmark = async () => {
+    if (!currentProduct || !user) {
+      closeModal();
+      return;
     }
-    closeModal();
+    
+    try {
+      setIsLoadingBookmarks(true);
+      
+      // Format the bookmark ID for the server
+      const bookmarkId = `${currentProduct.section}-${currentProduct.productId}`;
+      
+      // Remove from server
+      await authService.removeBookmark(bookmarkId);
+      
+      // Update local state
+      if (currentProduct.section === 'skin') {
+        setSkinBookmarks(prev => prev.filter(product => product.id.toString() !== currentProduct.productId.toString()));
+      } else {
+        setHairBookmarks(prev => prev.filter(product => product.id.toString() !== currentProduct.productId.toString()));
+      }
+    } catch (error) {
+      console.error('Error removing bookmark:', error);
+      // Removed Alert - silent fail for bookmark removal errors
+    } finally {
+      setIsLoadingBookmarks(false);
+      closeModal();
+    }
   };
 
   // Close modal
@@ -240,24 +320,22 @@ export const ProfileScreen: React.FC = () => {
     setCurrentProduct(null);
   };
 
-  // Toggle bookmark
-  const toggleBookmark = (section: 'skin' | 'hair', productId: number) => {
-    if (section === 'skin') {
-      setBookmarkedSkin((prev) => ({
-        ...prev,
-        [productId]: !prev[productId],
-      }));
-    } else {
-      setBookmarkedHair((prev) => ({
-        ...prev,
-        [productId]: !prev[productId],
-      }));
-    }
-  };
-
   // Handle product card press
   const handleProductPress = (product: Product) => {
-    console.log(`Product pressed: ${product.name}`);
+    // Open URL or search if url exists
+    if (product.url) {
+      Linking.openURL(product.url).catch(err => 
+        console.error('Error opening product URL:', err)
+      );
+    } else if (product.name && product.subtext) {
+      // Create a Google search for the product
+      const searchQuery = `${product.name} ${product.subtext}`;
+      const googleSearchUrl = `https://www.google.com/search?q=${encodeURIComponent(searchQuery)}`;
+      
+      Linking.openURL(googleSearchUrl).catch(err => 
+        console.error('Error opening Google search:', err)
+      );
+    }
   };
 
   // Handle logout
@@ -267,7 +345,7 @@ export const ProfileScreen: React.FC = () => {
       await logout();
       // Navigation will be handled by the AuthContext
     } catch (error) {
-      Alert.alert('Logout Error', 'There was a problem logging out. Please try again.');
+      // Removed Alert - silent fail for logout errors
       console.error('Logout error:', error);
     } finally {
       setIsLoggingOut(false);
@@ -283,56 +361,64 @@ export const ProfileScreen: React.FC = () => {
     navigation.navigate('PrivacyPolicy');
   };
 
+  // Empty bookmarks component
+  const EmptyBookmarks = ({ section }: { section: string }) => (
+    <View style={styles.emptyBookmarksContainer}>
+      <Text style={styles.emptyBookmarksText}>
+        You don't have any {section.toLowerCase()} products bookmarked yet.
+      </Text>
+    </View>
+  );
+
   // Product card component
   const ProductCard = ({
     product,
     section,
-    isBookmarked,
   }: {
     product: Product;
     section: 'skin' | 'hair';
-    isBookmarked: boolean;
-  }) => (
-    <View style={styles.productCard}>
-      {/* Outer container to allow image overflow */}
-      <View style={styles.outerImageContainer}>
-        <TouchableOpacity
-          style={styles.imageContainer}
-          onPress={() => handleProductPress(product)}
-        >
-          <Image
-            source={product.image}
-            style={styles.productImage}
-            resizeMode="contain"
-          />
-        </TouchableOpacity>
-      </View>
+  }) => {
+    // Debug image source
+    console.log(`Rendering product card for ${product.name}, image:`, product.image);
+    
+    return (
+      <View style={styles.productCard}>
+        {/* Outer container to allow image overflow */}
+        <View style={styles.outerImageContainer}>
+          <TouchableOpacity
+            style={styles.imageContainer}
+            onPress={() => handleProductPress(product)}
+          >
+            <Image
+              source={typeof product.image === 'string' ? { uri: product.image } : product.image}
+              style={styles.productImage}
+              resizeMode="contain"
+              onError={(e) => console.error('Image failed to load:', e.nativeEvent.error, product.image)}
+            />
+          </TouchableOpacity>
+        </View>
 
-      <Text style={styles.productName}>{product.name}</Text>
-      
-      <View style={styles.subtextRow}>
-        <Text style={styles.productSubtext}>{product.subtext}</Text>
-        <TouchableOpacity 
-          style={styles.bookmarkButton}
-          onPress={() => showRemoveBookmarkModal(section, product.id)}
-        >
-          <Image 
-            source={
-              isBookmarked
-                ? require('../../../assets/filled-bookmark.png')
-                : require('../../../assets/unfilled-bookmark.png')
-            }
-            style={styles.bookmarkIcon}
-          />
-        </TouchableOpacity>
+        <Text style={styles.productName}>{product.name}</Text>
+        
+        <View style={styles.subtextRow}>
+          <Text style={styles.productSubtext}>{product.subtext}</Text>
+          <TouchableOpacity 
+            style={styles.bookmarkButton}
+            onPress={() => showRemoveBookmarkModal(section, product.id)}
+            disabled={isLoadingBookmarks}
+          >
+            <Image 
+              source={require('../../../assets/filled-bookmark.png')}
+              style={styles.bookmarkIcon}
+            />
+          </TouchableOpacity>
+        </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Removed the main vertical ScrollView. 
-          Instead, we use a plain View so images can overflow upward. */}
       <View style={styles.content}>
         <TouchableOpacity
           style={styles.backButton}
@@ -381,39 +467,53 @@ export const ProfileScreen: React.FC = () => {
         <View style={styles.sectionContainer}>
           {/* Skin Section */}
           <Text style={styles.categoryTitle}>Skin</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.productRow}
-            contentContainerStyle={styles.productRowContent}
-          >
-            {skinProducts.map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                section="skin"
-                isBookmarked={bookmarkedSkin[product.id]}
-              />
-            ))}
-          </ScrollView>
+          {isLoadingBookmarks ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#CA5A5E" />
+            </View>
+          ) : skinBookmarks.length === 0 ? (
+            <EmptyBookmarks section="Skin" />
+          ) : (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.productRow}
+              contentContainerStyle={styles.productRowContent}
+            >
+              {skinBookmarks.map((product) => (
+                <ProductCard
+                  key={`skin-${product.id}`}
+                  product={product}
+                  section="skin"
+                />
+              ))}
+            </ScrollView>
+          )}
 
           {/* Hair Section */}
           <Text style={styles.categoryTitle}>Hair</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.productRow}
-            contentContainerStyle={styles.productRowContent}
-          >
-            {hairProducts.map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                section="hair"
-                isBookmarked={bookmarkedHair[product.id]}
-              />
-            ))}
-          </ScrollView>
+          {isLoadingBookmarks ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#CA5A5E" />
+            </View>
+          ) : hairBookmarks.length === 0 ? (
+            <EmptyBookmarks section="Hair" />
+          ) : (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.productRow}
+              contentContainerStyle={styles.productRowContent}
+            >
+              {hairBookmarks.map((product) => (
+                <ProductCard
+                  key={`hair-${product.id}`}
+                  product={product}
+                  section="hair"
+                />
+              ))}
+            </ScrollView>
+          )}
         </View>
 
         {/* Logout Button */}
@@ -770,5 +870,24 @@ const styles = StyleSheet.create({
     fontFamily: 'InstrumentSans-Medium',
     fontSize: 22,
     color: '#ca5a5e',
+  },
+  // New styles for empty bookmarks state and loading
+  emptyBookmarksContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 20,
+    paddingHorizontal: 10,
+  },
+  emptyBookmarksText: {
+    fontFamily: 'InstrumentSans-Regular',
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 10,
+    color: '#888',
+  },
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 20,
   },
 });

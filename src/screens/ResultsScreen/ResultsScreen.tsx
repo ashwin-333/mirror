@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity, ScrollView, Dimensions, StatusBar, Linking, ImageStyle } from 'react-native';
+import { View, Text, Image, StyleSheet, TouchableOpacity, ScrollView, Dimensions, StatusBar, Linking, ImageStyle, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SkinAnalysisResult, Recommendations, ProductRecommendation } from '../../utils/skinAnalysis';
 import BookmarkIcon from '../../../assets/bookmark.svg';
 import RedBookmarkIcon from '../../../assets/redbookmark.svg';
+import { authService } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const BASE_WIDTH = 393;
@@ -48,6 +50,7 @@ const fallbackAnalysis: SkinAnalysisResult = {
 
 export const ResultsScreen = ({ navigation, route }: ResultsScreenProps) => {
   const { mode, analysis: routeAnalysis, recommendations: routeRecommendations } = route.params;
+  const { user } = useAuth();
   
   // Use provided analysis or fallback
   const [analysis, setAnalysis] = useState<SkinAnalysisResult>(
@@ -61,6 +64,38 @@ export const ResultsScreen = ({ navigation, route }: ResultsScreenProps) => {
   
   // State to track bookmarked products
   const [bookmarkedProducts, setBookmarkedProducts] = useState<{[key: string]: boolean}>({});
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  
+  // Load user's bookmarks when component mounts
+  useEffect(() => {
+    loadUserBookmarks();
+  }, [user]);
+  
+  // Load user's bookmarks from the server
+  const loadUserBookmarks = async () => {
+    if (!user) return;
+    
+    try {
+      setIsLoading(true);
+      const response = await authService.getBookmarks();
+      
+      if (response.success && response.data) {
+        // Create a map of bookmarked products
+        const bookmarksMap: {[key: string]: boolean} = {};
+        
+        response.data.forEach((bookmark: any) => {
+          const key = `${bookmark.category}-${bookmark.productId}`;
+          bookmarksMap[key] = true;
+        });
+        
+        setBookmarkedProducts(bookmarksMap);
+      }
+    } catch (error) {
+      console.error('Error loading bookmarks:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
   
   // Format acne percentage for display
   const acnePercentText = `${Math.round(analysis.acnePercent * 100)}% redness`;
@@ -80,11 +115,66 @@ export const ResultsScreen = ({ navigation, route }: ResultsScreenProps) => {
   };
   
   // Toggle bookmark status for a product
-  const toggleBookmark = (productId: string) => {
-    setBookmarkedProducts(prev => ({
-      ...prev,
-      [productId]: !prev[productId]
-    }));
+  const toggleBookmark = async (productId: string, product: ProductRecommendation, category: string) => {
+    if (!user) {
+      // Removed Alert - silent fail for login requirement
+      return;
+    }
+    
+    setIsLoading(true);
+    
+    try {
+      const isCurrentlyBookmarked = bookmarkedProducts[productId];
+      
+      // Determine the image URL to save
+      let imageUrl = '';
+      if (product.localImage) {
+        imageUrl = product.localImage;
+      } else if (typeof product.image === 'string') {
+        imageUrl = product.image;
+      } else if (product.image && typeof product.image === 'object') {
+        // Handle case where image is an imported resource (e.g., require statement)
+        // We can't save the actual resource, but we could potentially default to a placeholder URL
+        console.log('Warning: Attempted to bookmark product with non-URL image');
+      }
+      
+      if (isCurrentlyBookmarked) {
+        // Remove bookmark from server
+        await authService.removeBookmark(productId);
+        
+        // Update local state
+        setBookmarkedProducts(prev => {
+          const updated = { ...prev };
+          delete updated[productId];
+          return updated;
+        });
+      } else {
+        // Log the image for debugging
+        console.log('Saving product with image URL:', imageUrl);
+        
+        // Add bookmark to server with the transparent image URL
+        await authService.addBookmark({
+          name: product.name || '',
+          description: product.description || '',
+          image: imageUrl, // This will now be the transparent image being displayed
+          url: product.url,
+          brand: product.brand || '',
+          category: category === 'cleanser' || category === 'moisturizer' || category === 'treatment' ? 'skin' : 'hair',
+          productId: product.id.toString(),
+        });
+        
+        // Update local state
+        setBookmarkedProducts(prev => ({
+          ...prev,
+          [productId]: true
+        }));
+      }
+    } catch (error) {
+      console.error('Error toggling bookmark:', error);
+      // Removed Alert - silent fail for bookmark errors
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Navigation items data
@@ -186,9 +276,10 @@ export const ResultsScreen = ({ navigation, route }: ResultsScreenProps) => {
               
               <TouchableOpacity 
                 style={styles.bookmarkButton}
-                onPress={() => toggleBookmark(`cleanser-${product.id}`)}
+                onPress={() => toggleBookmark(`skin-${product.id}`, product, 'cleanser')}
+                disabled={isLoading}
               >
-                {bookmarkedProducts[`cleanser-${product.id}`] ? (
+                {bookmarkedProducts[`skin-${product.id}`] ? (
                   <RedBookmarkIcon width={scaleWidth(24)} height={scaleWidth(24)} />
                 ) : (
                   <BookmarkIcon width={scaleWidth(24)} height={scaleWidth(24)} />
@@ -238,9 +329,10 @@ export const ResultsScreen = ({ navigation, route }: ResultsScreenProps) => {
               
               <TouchableOpacity 
                 style={styles.bookmarkButton}
-                onPress={() => toggleBookmark(`moisturizer-${product.id}`)}
+                onPress={() => toggleBookmark(`skin-${product.id}`, product, 'moisturizer')}
+                disabled={isLoading}
               >
-                {bookmarkedProducts[`moisturizer-${product.id}`] ? (
+                {bookmarkedProducts[`skin-${product.id}`] ? (
                   <RedBookmarkIcon width={scaleWidth(24)} height={scaleWidth(24)} />
                 ) : (
                   <BookmarkIcon width={scaleWidth(24)} height={scaleWidth(24)} />
@@ -290,9 +382,10 @@ export const ResultsScreen = ({ navigation, route }: ResultsScreenProps) => {
               
               <TouchableOpacity 
                 style={styles.bookmarkButton}
-                onPress={() => toggleBookmark(`treatment-${product.id}`)}
+                onPress={() => toggleBookmark(`skin-${product.id}`, product, 'treatment')}
+                disabled={isLoading}
               >
-                {bookmarkedProducts[`treatment-${product.id}`] ? (
+                {bookmarkedProducts[`skin-${product.id}`] ? (
                   <RedBookmarkIcon width={scaleWidth(24)} height={scaleWidth(24)} />
                 ) : (
                   <BookmarkIcon width={scaleWidth(24)} height={scaleWidth(24)} />

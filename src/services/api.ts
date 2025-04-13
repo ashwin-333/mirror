@@ -296,7 +296,59 @@ export const authService = {
       console.error('API Service: Profile image upload error:', error.message);
       throw error;
     }
-  }
+  },
+
+  // Bookmark Services
+  
+  // Add a bookmark
+  async addBookmark(product: {
+    name: string;
+    description: string;
+    image: string;
+    url?: string;
+    brand: string;
+    category: 'skin' | 'hair';
+    productId: string;
+  }) {
+    try {
+      console.log('API Service: Adding bookmark...', product);
+      // Log the image URL specifically
+      console.log('API Service: Image being saved:', product.image);
+      
+      const response = await api.post('/auth/bookmarks', product);
+      console.log('API Service: Bookmark added successfully', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('API Service: Add bookmark error:', error.response?.data || error.message);
+      throw error.response?.data || { message: error.message };
+    }
+  },
+  
+  // Remove a bookmark
+  async removeBookmark(bookmarkId: string) {
+    try {
+      console.log(`API Service: Removing bookmark ${bookmarkId}...`);
+      const response = await api.delete(`/auth/bookmarks/${bookmarkId}`);
+      console.log('API Service: Bookmark removed successfully', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('API Service: Remove bookmark error:', error.response?.data || error.message);
+      throw error.response?.data || { message: error.message };
+    }
+  },
+  
+  // Get all bookmarks
+  async getBookmarks() {
+    try {
+      console.log('API Service: Getting bookmarks...');
+      const response = await api.get('/auth/bookmarks');
+      console.log('API Service: Got bookmarks successfully', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('API Service: Get bookmarks error:', error.response?.data || error.message);
+      throw error.response?.data || { message: error.message };
+    }
+  },
 };
 
 export default api; 

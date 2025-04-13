@@ -26,6 +26,23 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: '',
   },
+  bookmarks: {
+    type: [
+      {
+        name: String,
+        description: String,
+        image: String,
+        url: String,
+        brand: String,
+        category: {
+          type: String,
+          enum: ['skin', 'hair']
+        },
+        productId: String,
+      }
+    ],
+    default: [],
+  },
   createdAt: {
     type: Date,
     default: Date.now,

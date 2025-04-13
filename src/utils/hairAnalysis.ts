@@ -21,11 +21,11 @@ const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/
 
 // Server configuration for image processing
 const SERVER_PORT = Constants.expoConfig?.extra?.serverPort || '5001';
-const DEVELOPER_IP = Constants.expoConfig?.extra?.developerIp || Constants.expoConfig?.extra?.developerId || '100.64.160.220';
+const DEVELOPER_IP = Constants.expoConfig?.extra?.developerIp || Constants.expoConfig?.extra?.developerId || '100.64.174.222';
 const SERVER_URL = `http://${DEVELOPER_IP}:${SERVER_PORT}`;
 
 // Known working URL for background removal
-const BACKGROUND_REMOVAL_SERVICE_URL = "http://100.64.160.220:5001/remove-background";
+const BACKGROUND_REMOVAL_SERVICE_URL = "http://100.64.174.222:5001/remove-background";
 
 // ----------------------
 // Type Definitions

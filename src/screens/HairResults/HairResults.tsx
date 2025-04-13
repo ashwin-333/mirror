@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity, ScrollView, Dimensions, StatusBar, Linking, ImageStyle } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, Image, StyleSheet, TouchableOpacity, ScrollView, Dimensions, StatusBar, Linking, ImageStyle, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { HairAnalysisResult, HairRecommendations, ProductRecommendation } from '../../utils/hairAnalysis';
 import BookmarkIcon from '../../../assets/bookmark.svg';
 import RedBookmarkIcon from '../../../assets/redbookmark.svg';
+import { authService } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const BASE_WIDTH = 393;
@@ -51,6 +53,7 @@ const fallbackHairAnalysis: HairAnalysisResult = {
 
 export const HairResults = ({ navigation, route }: HairResultsProps) => {
   const { analysis: routeAnalysis, recommendations: routeRecommendations } = route.params;
+  const { user } = useAuth();
   
   // State for hair analysis
   const [hairAnalysis, setHairAnalysis] = useState<HairAnalysisResult | null>(
@@ -64,6 +67,38 @@ export const HairResults = ({ navigation, route }: HairResultsProps) => {
   
   // State to track bookmarked products
   const [bookmarkedProducts, setBookmarkedProducts] = useState<{[key: string]: boolean}>({});
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  
+  // Load user's bookmarks when component mounts
+  useEffect(() => {
+    loadUserBookmarks();
+  }, [user]);
+  
+  // Load user's bookmarks from the server
+  const loadUserBookmarks = async () => {
+    if (!user) return;
+    
+    try {
+      setIsLoading(true);
+      const response = await authService.getBookmarks();
+      
+      if (response.success && response.data) {
+        // Create a map of bookmarked products
+        const bookmarksMap: {[key: string]: boolean} = {};
+        
+        response.data.forEach((bookmark: any) => {
+          const key = `${bookmark.category}-${bookmark.productId}`;
+          bookmarksMap[key] = true;
+        });
+        
+        setBookmarkedProducts(bookmarksMap);
+      }
+    } catch (error) {
+      console.error('Error loading bookmarks:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
   
   // Handle navigation back to home
   const handleReturnHome = () => {
@@ -92,11 +127,59 @@ export const HairResults = ({ navigation, route }: HairResultsProps) => {
   };
   
   // Toggle bookmark status for a product
-  const toggleBookmark = (productId: string) => {
-    setBookmarkedProducts(prev => ({
-      ...prev,
-      [productId]: !prev[productId]
-    }));
+  const toggleBookmark = async (productId: string, product: ProductRecommendation) => {
+    if (!user) {
+      // Removed Alert - silent fail for login requirement
+      return;
+    }
+    
+    setIsLoading(true);
+    
+    try {
+      const isCurrentlyBookmarked = bookmarkedProducts[productId];
+      
+      // Determine the image URL to save
+      let imageUrl = '';
+      if (product.localImage) {
+        imageUrl = product.localImage;
+      } else if (typeof product.image === 'string' && product.image !== 'placeholder') {
+        imageUrl = product.image;
+      }
+      
+      if (isCurrentlyBookmarked) {
+        // Remove bookmark from server
+        await authService.removeBookmark(productId);
+        
+        // Update local state
+        setBookmarkedProducts(prev => {
+          const updated = { ...prev };
+          delete updated[productId];
+          return updated;
+        });
+      } else {
+        // Add bookmark to server with the transparent image URL
+        await authService.addBookmark({
+          name: product.name || '',
+          description: product.name || '', // Using name as description since that's what we display
+          image: imageUrl, // This will now be the transparent image being displayed
+          url: product.url,
+          brand: product.brand || '',
+          category: 'hair',
+          productId: product.id.toString(),
+        });
+        
+        // Update local state
+        setBookmarkedProducts(prev => ({
+          ...prev,
+          [productId]: true
+        }));
+      }
+    } catch (error) {
+      console.error('Error toggling bookmark:', error);
+      // Removed Alert - silent fail for bookmark errors
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Navigation items data
@@ -165,7 +248,8 @@ export const HairResults = ({ navigation, route }: HairResultsProps) => {
       
       <TouchableOpacity 
         style={styles.bookmarkButton}
-        onPress={() => toggleBookmark(`hair-${product.id}`)}
+        onPress={() => toggleBookmark(`hair-${product.id}`, product)}
+        disabled={isLoading}
       >
         {bookmarkedProducts[`hair-${product.id}`] ? (
           <RedBookmarkIcon width={scaleWidth(24)} height={scaleWidth(24)} />
