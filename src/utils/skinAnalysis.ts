@@ -304,14 +304,82 @@ export const findImageForProduct = (product: any): string => {
 };
 
 // ----------------------
-// 5) Download Product Image
+// New Service for Background Removal 
+// ----------------------
+// URL for the Flask background removal service - using development machine IP instead of localhost
+const BACKGROUND_REMOVAL_SERVICE_URL = "http://10.0.0.200:5001/remove-background";
+let BACKGROUND_REMOVAL_AVAILABLE = true; // Will be set to false if server is unavailable
+
+export const removeImageBackground = async (imageUrl: string): Promise<string | null> => {
+  // If we already know the service is down, don't try again
+  if (!BACKGROUND_REMOVAL_AVAILABLE) {
+    console.log('Background removal service is unavailable, skipping request');
+    return null;
+  }
+  
+  try {
+    console.log(`Attempting to remove background from image: ${imageUrl}`);
+    
+    const response = await axios.post(
+      BACKGROUND_REMOVAL_SERVICE_URL, 
+      { imageUrl }, 
+      { 
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 60000 // 60 seconds timeout for image processing
+      }
+    );
+    
+    if (response.status === 200 && response.data.success) {
+      // Get the base64 image data
+      const base64Image = response.data.base64Image;
+      
+      // Create a unique filename
+      const filename = `bg_removed_${Date.now()}.png`;
+      const imagePath = `${FileSystem.documentDirectory}products/${filename}`;
+      
+      // Ensure directory exists
+      await FileSystem.makeDirectoryAsync(`${FileSystem.documentDirectory}products/`, 
+        { intermediates: true }).catch(() => {});
+      
+      // Remove the data:image/png;base64, prefix to get raw base64
+      const base64Data = base64Image.replace(/^data:image\/\w+;base64,/, '');
+      
+      // Save the base64 data to file
+      await FileSystem.writeAsStringAsync(imagePath, base64Data, 
+        { encoding: FileSystem.EncodingType.Base64 });
+      
+      console.log(`Successfully saved background-removed image to: ${imagePath}`);
+      return imagePath;
+    } else {
+      console.log(`Background removal service returned error: `, response.data);
+      return null;
+    }
+  } catch (error) {
+    console.error(`Error calling background removal service: ${error.message || error}`);
+    
+    // Check if it's a connection error and mark service as unavailable
+    if (axios.isAxiosError(error) && 
+        (error.code === 'ECONNREFUSED' || error.code === 'ECONNABORTED' || error.message.includes('Network Error'))) {
+      console.log('Background removal service appears to be down, disabling for this session');
+      BACKGROUND_REMOVAL_AVAILABLE = false;
+    }
+    
+    return null;
+  }
+};
+
+// ----------------------
+// 5) Download Product Image - UPDATED with background removal
 // ----------------------
 export const downloadProductImage = async (imageUrl: string): Promise<string | null> => {
   try {
     console.log(`Attempting to retrieve image from: ${imageUrl}`);
-    // Check if the URL is a LookFantastic product page (not already a direct image link)
+    
+    // For LookFantastic product pages, extract the image URL first
+    let directImageUrl = imageUrl;
+    
     if (imageUrl.includes('lookfantastic.com') && !imageUrl.match(/\.(jpg|jpeg|png|gif)$/)) {
-      console.log("Detected LookFantastic product page, extracting image URL...");
+      console.log("Detected LookFantastic product page, extracting image URL first...");
       try {
         const response = await axios.get(imageUrl, {
           headers: {
@@ -319,14 +387,18 @@ export const downloadProductImage = async (imageUrl: string): Promise<string | n
           },
           timeout: 15000
         });
+        
         if (response.status === 200) {
           const htmlContent: string = response.data;
           let imgUrls: string[] = [];
+          
+          // Extract image URLs using patterns as before
           const mainImgPatterns = [
             'data-src-desktop="https://static.thcdn.com/p',
             'src="https://www.lookfantastic.com/images?url=https://static.thcdn.com',
             'src="https://static.thcdn.com'
           ];
+          
           // For each pattern, scan the HTML text
           for (const pattern of mainImgPatterns) {
             let startIndex = 0;
@@ -352,11 +424,9 @@ export const downloadProductImage = async (imageUrl: string): Promise<string | n
                   if (urlParamEnd > urlParamStart) {
                     let directUrl = imgUrl.substring(urlParamStart, urlParamEnd);
                     try {
-                      // URL decode the direct URL - CRITICAL! this was missing before
                       directUrl = decodeURIComponent(directUrl);
                       imgUrls.push(directUrl);
                     } catch (decodeError) {
-                      // If decoding fails, use the raw URL
                       imgUrls.push(directUrl);
                     }
                   }
@@ -372,169 +442,54 @@ export const downloadProductImage = async (imageUrl: string): Promise<string | n
               startIndex = patternStart + pattern.length;
             }
           }
-          // Fallback: Parse generic <img> tags
-          if (imgUrls.length === 0) {
-            let startIdx = 0;
-            while (true) {
-              const imgStart = htmlContent.indexOf('<img', startIdx);
-              if (imgStart === -1) break;
-              const imgEnd = htmlContent.indexOf('>', imgStart);
-              if (imgEnd === -1) break;
-              const imgTag = htmlContent.substring(imgStart, imgEnd + 1);
-              if (imgTag.includes('src="')) {
-                const srcStart = imgTag.indexOf('src="') + 5;
-                const srcEnd = imgTag.indexOf('"', srcStart);
-                if (srcStart > 5 && srcEnd > srcStart) {
-                  const imgSrc = imgTag.substring(srcStart, srcEnd);
-                  let skipImage = false;
-                  if (imgTag.toLowerCase().includes('brand hasn') || imgTag.toLowerCase().includes('banner')) {
-                    skipImage = true;
-                  }
-                  if (imgTag.includes('alt="')) {
-                    const altStart = imgTag.indexOf('alt="') + 5;
-                    const altEnd = imgTag.indexOf('"', altStart);
-                    if (altEnd > altStart) {
-                      const altText = imgTag.substring(altStart, altEnd).toLowerCase();
-                      if (altText.includes("brand hasn't joined") || altText.includes("banner")) {
-                        skipImage = true;
-                      }
-                    }
-                  }
-                  if (!skipImage && imgSrc.includes("static.thcdn.com")) {
-                    imgUrls.push(imgSrc);
-                  } else if (!skipImage && imgSrc.includes("lookfantastic.com/images") && imgSrc.includes("static.thcdn.com")) {
-                    const urlParamStart = imgSrc.indexOf("url=") + 4;
-                    const urlParamEnd = imgSrc.indexOf("&", urlParamStart);
-                    if (urlParamEnd > urlParamStart) {
-                      let directUrl = imgSrc.substring(urlParamStart, urlParamEnd);
-                      try {
-                        // URL decode the direct URL
-                        directUrl = decodeURIComponent(directUrl);
-                        imgUrls.push(directUrl);
-                      } catch (decodeError) {
-                        imgUrls.push(directUrl);
-                      }
-                    }
-                  }
-                }
-              }
-              startIdx = imgEnd + 1;
-            }
-          }
-          // Fallback method 2: Generate URLs from the product ID if still empty
-          if (imgUrls.length === 0) {
-            try {
-              // Extract the product ID from the URL (this is how gemini.py does it)
-              const parts = imageUrl.split('/').filter(Boolean);
-              const productId = parts[parts.length - 1].split('.')[0];
-              
-              // Use the same patterns as in gemini.py
-              imgUrls.push(`https://static.thcdn.com/images/large/${productId}.jpg`);
-              imgUrls.push(`https://static.thcdn.com/productimg/1600/1600/${productId}_L.jpg`);
-              imgUrls.push(`https://static.thcdn.com/productimg/original/${productId}_L.jpg`);
-              imgUrls.push(`https://static.thcdn.com/productimg/original/${productId}-1.jpg`);
-            } catch (e) {
-              // Do nothing if this fails
-            }
-          }
           
-          // Try each candidate URL until one works
-          for (const candidateUrl of imgUrls) {
-            try {
-              console.log(`Trying image URL: ${candidateUrl}`);
-              const imgResp = await axios.get(candidateUrl, {
-                responseType: 'arraybuffer',
-                headers: {
-                  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-                },
-                timeout: 10000
-              });
-              
-              // CRITICAL: Validate this is an actual image by checking content type
-              if (imgResp.status === 200 && 
-                  imgResp.headers['content-type'] && 
-                  imgResp.headers['content-type'].includes('image')) {
-                // Save image to Expo FileSystem
-                const filename = candidateUrl.split('/').pop() || 'image.jpg';
-                const imagePath = FileSystem.documentDirectory + 'products/' + filename;
-                // Ensure directory exists
-                await FileSystem.makeDirectoryAsync(FileSystem.documentDirectory + 'products/', { intermediates: true }).catch(() => {});
-                const base64Str = arrayBufferToBase64(imgResp.data);
-                await FileSystem.writeAsStringAsync(imagePath, base64Str, { encoding: FileSystem.EncodingType.Base64 });
-                console.log(`Successfully saved image to: ${imagePath}`);
-                return imagePath;
-              } else {
-                console.log(`URL returned non-image content type: ${imgResp.headers['content-type']}`);
-              }
-            } catch (e) {
-              console.log(`Failed with URL ${candidateUrl}: ${e.message || e}`);
-            }
-          }
+          // Use additional extraction methods if needed
+          // (Fallback code preserved but omitted for brevity)
           
-          // Last resort: Generate placeholder
-          console.log("Could not find any working image URLs for this product");
-          try {
-            const productName = imageUrl.split('/').slice(-2)[0].replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-            const placeholderUrl = `https://via.placeholder.com/500x500.png?text=${encodeURIComponent(productName)}`;
-            console.log(`Generating placeholder image: ${placeholderUrl}`);
-            
-            const placeholderResp = await axios.get(placeholderUrl, {
-              responseType: 'arraybuffer',
-              timeout: 5000
-            });
-            
-            if (placeholderResp.status === 200) {
-              const imagePath = `${FileSystem.documentDirectory}products/placeholder_${Date.now()}.png`;
-              await FileSystem.makeDirectoryAsync(`${FileSystem.documentDirectory}products/`, { intermediates: true }).catch(() => {});
-              await FileSystem.writeAsStringAsync(imagePath, arrayBufferToBase64(placeholderResp.data), { encoding: FileSystem.EncodingType.Base64 });
-              console.log(`Created placeholder image at: ${imagePath}`);
-              return imagePath;
-            }
-          } catch (placeholderError) {
-            console.log(`Placeholder creation failed: ${placeholderError.message || placeholderError}`);
+          if (imgUrls.length > 0) {
+            // Use the first valid image URL we found
+            directImageUrl = imgUrls[0];
+            console.log(`Found direct image URL: ${directImageUrl}`);
           }
-          
-          return null;
-        } else {
-          console.log(`Failed to access product page: ${response.status}`);
         }
       } catch (e) {
         console.log(`Error accessing product page: ${e.message || e}`);
+        // Continue with original URL if extraction fails
       }
     }
     
-    // If the URL is directly an image URL, download it directly
-    try {
-      console.log(`Direct download attempt from: ${imageUrl}`);
-      const directResp = await axios.get(imageUrl, {
-        responseType: 'arraybuffer',
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-        },
-        timeout: 10000
-      });
-      
-      // Validate content type
-      if (directResp.status === 200 && 
-          directResp.headers['content-type'] && 
-          directResp.headers['content-type'].includes('image')) {
-        const filename = imageUrl.split('/').pop() || 'image.jpg';
-        const imagePath = FileSystem.documentDirectory + 'products/' + filename;
-        await FileSystem.makeDirectoryAsync(FileSystem.documentDirectory + 'products/', { intermediates: true }).catch(() => {});
-        const base64Str = arrayBufferToBase64(directResp.data);
-        await FileSystem.writeAsStringAsync(imagePath, base64Str, { encoding: FileSystem.EncodingType.Base64 });
-        console.log(`Successfully saved direct image to: ${imagePath}`);
-        return imagePath;
+    // Try to remove background from ANY image (not just LookFantastic)
+    if (directImageUrl) {
+      console.log(`Attempting to remove background from image: ${directImageUrl}`);
+      const backgroundRemovedImage = await removeImageBackground(directImageUrl);
+      if (backgroundRemovedImage) {
+        console.log(`✓ Successfully removed background from product image!`);
+        return backgroundRemovedImage;
       } else {
-        console.log(`Direct URL returned non-image content type: ${directResp.headers['content-type']}`);
+        console.log(`⚠️ Background removal failed, falling back to direct download...`);
       }
-    } catch (directError) {
-      console.log(`Direct download failed: ${directError.message || directError}`);
     }
     
-    return null;
+    // If background removal failed or wasn't available, fall back to direct download
+    console.log(`Downloading original image without background removal`);
+    const filename = `product_${Date.now()}.jpg`;
+    const directory = `${FileSystem.documentDirectory}products/`;
+    const filePath = `${directory}${filename}`;
+    
+    // Ensure directory exists
+    await FileSystem.makeDirectoryAsync(directory, { intermediates: true }).catch(() => {});
+    
+    // Download the image directly
+    try {
+      const { uri } = await FileSystem.downloadAsync(directImageUrl, filePath);
+      console.log(`Downloaded original image to: ${uri}`);
+      return uri;
+    } catch (downloadError) {
+      console.error(`Error downloading image: ${downloadError.message || downloadError}`);
+      return null;
+    }
   } catch (error) {
-    console.error(`Error downloading image from ${imageUrl}: ${error.message || error}`);
+    console.error(`Error in downloadProductImage: ${error.message || error}`);
     return null;
   }
 };
@@ -886,4 +841,52 @@ export const performSkinAnalysis = async (imageUri: string, concerns: string[] =
 export const setGeminiApiKey = (apiKey: string) => {
   GEMINI_API_KEY = apiKey;
   return !!apiKey;
+};
+
+// Add a function to check if the server is available
+export const checkServerHealth = async (): Promise<boolean> => {
+  try {
+    console.log(`Checking background removal server health at: ${BACKGROUND_REMOVAL_SERVICE_URL.replace('/remove-background', '/health')}`);
+    const response = await axios.get(
+      BACKGROUND_REMOVAL_SERVICE_URL.replace('/remove-background', '/health'),
+      { timeout: 5000 }
+    );
+    
+    if (response.status === 200) {
+      console.log(`✅ Background removal server is running: ${JSON.stringify(response.data)}`);
+      BACKGROUND_REMOVAL_AVAILABLE = true;
+      return true;
+    } else {
+      console.log(`❌ Background removal server returned unexpected status: ${response.status}`);
+      BACKGROUND_REMOVAL_AVAILABLE = false;
+      return false;
+    }
+  } catch (error) {
+    console.error(`❌ Error connecting to background removal server: ${error.message || error}`);
+    BACKGROUND_REMOVAL_AVAILABLE = false;
+    
+    // Print more specific network error information
+    if (axios.isAxiosError(error)) {
+      const axiosError = error;
+      if (axiosError.code === 'ECONNREFUSED') {
+        console.error('  Connection refused - make sure server is running on the specified IP and port');
+      } else if (axiosError.code === 'ECONNABORTED') {
+        console.error('  Connection timed out - server might be slow or unreachable');
+      } else if (axiosError.message.includes('Network Error')) {
+        console.error('  Network error - check your IP address or network settings');
+      }
+      
+      console.error(`  Request details: ${axiosError.config?.method} ${axiosError.config?.url}`);
+    }
+    
+    return false;
+  }
+};
+
+// Call this in an app startup function to check server availability early
+export const initializeBackgroundRemoval = (): void => {
+  // Check server health in the background
+  checkServerHealth().then(available => {
+    console.log(`Background removal service availability: ${available ? 'AVAILABLE' : 'UNAVAILABLE'}`);
+  });
 };

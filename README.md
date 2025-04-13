@@ -59,6 +59,31 @@ npm run dev
 
 The server should start and connect to your MongoDB database. By default, it runs on port 5002.
 
+## Background Removal Server
+
+To enable background removal for product images, you need to run the Flask server:
+
+1. Prerequisites:
+   - Python 3.7+ installed
+   - pip package manager
+
+2. Start the server:
+```bash
+cd server
+chmod +x start_server.sh
+./start_server.sh
+```
+
+3. The server will run on `http://localhost:5001` and handle background removal requests from the app.
+
+4. Test the server with:
+```bash
+curl http://localhost:5001/health
+```
+Which should return: `{"rembg_available":true,"status":"healthy"}`
+
+> Note: The server uses the `rembg` Python library to remove backgrounds from product images. It runs on port 5001 to avoid conflicts with macOS AirPlay which uses port 5000.
+
 ## Running the App
 
 Start the development server:

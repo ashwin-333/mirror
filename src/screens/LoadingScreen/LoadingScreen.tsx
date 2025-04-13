@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity, Dimensions, StatusBar, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as FileSystem from 'expo-file-system';
-import { performSkinAnalysis, SkinAnalysisResult, Recommendations } from '../../utils/skinAnalysis';
+import { performSkinAnalysis, SkinAnalysisResult, Recommendations, checkServerHealth } from '../../utils/skinAnalysis';
 import { Svg, Path, G, ClipPath, Defs, Circle, LinearGradient, Stop } from 'react-native-svg';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -23,6 +23,7 @@ export const LoadingScreen = ({ navigation, route }: LoadingScreenProps) => {
   const { mode, photoUri } = route.params;
   const spinAnimation = useRef(new Animated.Value(0)).current;
   const [error, setError] = useState<string | null>(null);
+  const [progress, setProgress] = useState<string>("Starting analysis...");
 
   useEffect(() => {
     // Start the spinner animation
@@ -34,7 +35,7 @@ export const LoadingScreen = ({ navigation, route }: LoadingScreenProps) => {
       })
     ).start();
 
-    // Process the photo if it exists
+    // Check server health first
     const processPhoto = async () => {
       if (photoUri) {
         try {
@@ -44,21 +45,26 @@ export const LoadingScreen = ({ navigation, route }: LoadingScreenProps) => {
             throw new Error('Photo file not found');
           }
           
+          // Check server health before processing
+          setProgress("Checking background removal service...");
+          await checkServerHealth();
+          
           // Perform skin analysis using our utility
+          setProgress("Analyzing skin features...");
           const results = await performSkinAnalysis(photoUri);
           
-          // Wait a moment for a better UX
-          setTimeout(() => {
-            // Navigate to results screen with analysis data
-            navigation.navigate('Results', { 
-              mode,
-              analysis: results.analysis,
-              recommendations: results.recommendations
-            });
-          }, 1000);
+          // Navigate to results screen with analysis data
+          setProgress("Loading results...");
+          navigation.navigate('Results', { 
+            mode,
+            analysis: results.analysis,
+            recommendations: results.recommendations
+          });
         } catch (err) {
           console.error('Error analyzing photo:', err);
           setError('Something went wrong with skin analysis. Please try again.');
+          setProgress("Using fallback recommendations...");
+          
           // Navigate to results with fallback data after a delay
           setTimeout(() => {
             navigation.navigate('Results', { mode });
@@ -66,9 +72,10 @@ export const LoadingScreen = ({ navigation, route }: LoadingScreenProps) => {
         }
       } else {
         // If no photo, wait a moment and navigate to results with default data
+        setProgress("No photo provided, using default data...");
         setTimeout(() => {
           navigation.navigate('Results', { mode });
-        }, 3000);
+        }, 2000);
       }
     };
 
@@ -131,6 +138,9 @@ export const LoadingScreen = ({ navigation, route }: LoadingScreenProps) => {
         <Text style={styles.title}>Hang tight.</Text>
         <Text style={styles.subtitle}>Mirror AI is working its magic...</Text>
         
+        {/* Progress message */}
+        <Text style={styles.progressText}>{progress}</Text>
+        
         {/* Error message if any */}
         {error && <Text style={styles.errorText}>{error}</Text>}
       </View>
@@ -191,7 +201,14 @@ const styles = StyleSheet.create({
     color: '#000',
     textAlign: 'center',
     fontFamily: "InstrumentSans-Regular",
-    marginBottom: scaleWidth(40),
+    marginBottom: scaleWidth(20),
+  },
+  progressText: {
+    fontSize: scaleWidth(14),
+    color: '#555',
+    textAlign: 'center',
+    fontFamily: "InstrumentSans-Regular",
+    marginBottom: scaleWidth(20),
   },
   errorText: {
     fontSize: scaleWidth(14),

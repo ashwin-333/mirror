@@ -1,11 +1,31 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity, ScrollView, Dimensions, StatusBar, Linking } from 'react-native';
+import { View, Text, Image, StyleSheet, TouchableOpacity, ScrollView, Dimensions, StatusBar, Linking, ImageStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SkinAnalysisResult, Recommendations, ProductRecommendation } from '../../utils/skinAnalysis';
+import BookmarkIcon from '../../../assets/bookmark.svg';
+import RedBookmarkIcon from '../../../assets/redbookmark.svg';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const BASE_WIDTH = 393;
 const scaleWidth = (size: number) => (size / BASE_WIDTH) * SCREEN_WIDTH;
+
+// Define image-specific styles
+const iconStyles: Record<string, ImageStyle> = {
+  navIcon: {
+    width: scaleWidth(24),
+    height: scaleWidth(24)
+  },
+  arrowIcon: {
+    width: scaleWidth(12),
+    height: scaleWidth(12),
+    marginHorizontal: scaleWidth(5)
+  },
+  productImage: {
+    width: '100%',
+    height: '100%',
+    transform: [{ scale: 1.3 }, { rotate: '10deg' }]
+  }
+};
 
 type ResultsScreenProps = {
   navigation: any;
@@ -39,6 +59,9 @@ export const ResultsScreen = ({ navigation, route }: ResultsScreenProps) => {
     routeRecommendations || { cleansers: [], moisturizers: [], treatments: [] }
   );
   
+  // State to track bookmarked products
+  const [bookmarkedProducts, setBookmarkedProducts] = useState<{[key: string]: boolean}>({});
+  
   // Format acne percentage for display
   const acnePercentText = `${Math.round(analysis.acnePercent * 100)}% redness`;
   
@@ -55,27 +78,43 @@ export const ResultsScreen = ({ navigation, route }: ResultsScreenProps) => {
       );
     }
   };
+  
+  // Toggle bookmark status for a product
+  const toggleBookmark = (productId: string) => {
+    setBookmarkedProducts(prev => ({
+      ...prev,
+      [productId]: !prev[productId]
+    }));
+  };
+
+  // Navigation items data
+  const navigationItems = [
+    { icon: require('../../../assets/home.png'), active: false, onPress: () => navigation.navigate('Home') },
+    { icon: require('../../../assets/arrow.png'), active: false },
+    { icon: require('../../../assets/scan.png'), active: false, onPress: () => navigation.navigate('Camera') },
+    { icon: require('../../../assets/arrow.png'), active: false },
+    { icon: require('../../../assets/wand.png'), active: false, onPress: () => navigation.navigate('Loading') },
+    { icon: require('../../../assets/arrow.png'), active: false },
+    { icon: require('../../../assets/tag.png'), active: true },
+  ];
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" backgroundColor="white" />
       
-      {/* Header with return link */}
+      {/* Header with Home button */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Results</Text>
         <TouchableOpacity 
-          style={styles.returnButton}
+          style={styles.homeButton}
           onPress={handleReturnHome}
         >
-          <View style={styles.backButtonInner}>
-            <Text style={styles.returnArrow}>{'<'}</Text>
-            <Text style={styles.returnButtonText}>Return to Home</Text>
-          </View>
+          <Text style={styles.homeButtonText}>Home</Text>
         </TouchableOpacity>
       </View>
       
       <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-        {/* Skin analysis */}
+        {/* Skin analysis metrics */}
         <View style={styles.analysisContainer}>
           <View style={styles.analysisItem}>
             <Text style={styles.analysisLabel}>Skin Tone</Text>
@@ -100,124 +139,160 @@ export const ResultsScreen = ({ navigation, route }: ResultsScreenProps) => {
           {/* Cleansers */}
           <Text style={styles.categoryTitle}>Cleansers</Text>
           {recommendations.cleansers.map(product => (
-            <TouchableOpacity 
+            <View 
               key={`cleanser-${product.id}`} 
               style={styles.productCard}
-              onPress={() => openProductUrl(product.url)}
             >
               <View style={styles.productInfo}>
                 <Text style={styles.productName}>{product.brand}</Text>
                 <Text style={styles.productDescription}>{product.description}</Text>
               </View>
-              <View style={styles.productImageContainer}>
+              
+              <TouchableOpacity 
+                style={styles.productImageContainer}
+                onPress={() => openProductUrl(product.url)}
+              >
                 {product.localImage ? (
                   <Image 
                     source={{ uri: product.localImage }} 
-                    style={styles.productImage}
+                    style={iconStyles.productImage}
                     resizeMode="contain"
                   />
                 ) : typeof product.image === 'string' ? (
                   <Image 
                     source={{ uri: product.image }} 
-                    style={styles.productImage}
+                    style={iconStyles.productImage}
                     resizeMode="contain"
                   />
                 ) : (
                   <Image 
                     source={product.image} 
-                    style={styles.productImage}
+                    style={iconStyles.productImage}
                     resizeMode="contain"
                   />
                 )}
-              </View>
-              <Text style={styles.productPrice}>{product.price}</Text>
-              <TouchableOpacity style={styles.bookmarkButton}>
-                <Text style={styles.bookmarkIcon}>☐</Text>
               </TouchableOpacity>
-            </TouchableOpacity>
+              
+              <Text style={styles.productPrice}>{product.price}</Text>
+              
+              <TouchableOpacity 
+                style={styles.bookmarkButton}
+                onPress={() => toggleBookmark(`cleanser-${product.id}`)}
+              >
+                {bookmarkedProducts[`cleanser-${product.id}`] ? (
+                  <RedBookmarkIcon width={scaleWidth(24)} height={scaleWidth(24)} />
+                ) : (
+                  <BookmarkIcon width={scaleWidth(24)} height={scaleWidth(24)} />
+                )}
+              </TouchableOpacity>
+            </View>
           ))}
           
           {/* Moisturizers */}
           <Text style={styles.categoryTitle}>Moisturizers</Text>
           {recommendations.moisturizers.map(product => (
-            <TouchableOpacity 
+            <View 
               key={`moisturizer-${product.id}`} 
               style={styles.productCard}
-              onPress={() => openProductUrl(product.url)}
             >
               <View style={styles.productInfo}>
                 <Text style={styles.productName}>{product.brand}</Text>
                 <Text style={styles.productDescription}>{product.description}</Text>
               </View>
-              <View style={styles.productImageContainer}>
+              
+              <TouchableOpacity 
+                style={styles.productImageContainer}
+                onPress={() => openProductUrl(product.url)}
+              >
                 {product.localImage ? (
                   <Image 
                     source={{ uri: product.localImage }} 
-                    style={styles.productImage}
+                    style={iconStyles.productImage}
                     resizeMode="contain"
                   />
                 ) : typeof product.image === 'string' ? (
                   <Image 
                     source={{ uri: product.image }} 
-                    style={styles.productImage}
+                    style={iconStyles.productImage}
                     resizeMode="contain"
                   />
                 ) : (
                   <Image 
                     source={product.image} 
-                    style={styles.productImage}
+                    style={iconStyles.productImage}
                     resizeMode="contain"
                   />
                 )}
-              </View>
-              <Text style={styles.productPrice}>{product.price}</Text>
-              <TouchableOpacity style={styles.bookmarkButton}>
-                <Text style={styles.bookmarkIcon}>☐</Text>
               </TouchableOpacity>
-            </TouchableOpacity>
+              
+              <Text style={styles.productPrice}>{product.price}</Text>
+              
+              <TouchableOpacity 
+                style={styles.bookmarkButton}
+                onPress={() => toggleBookmark(`moisturizer-${product.id}`)}
+              >
+                {bookmarkedProducts[`moisturizer-${product.id}`] ? (
+                  <RedBookmarkIcon width={scaleWidth(24)} height={scaleWidth(24)} />
+                ) : (
+                  <BookmarkIcon width={scaleWidth(24)} height={scaleWidth(24)} />
+                )}
+              </TouchableOpacity>
+            </View>
           ))}
           
           {/* Treatments */}
           <Text style={styles.categoryTitle}>Treatments</Text>
           {recommendations.treatments.map(product => (
-            <TouchableOpacity 
+            <View 
               key={`treatment-${product.id}`} 
               style={styles.productCard}
-              onPress={() => openProductUrl(product.url)}
             >
               <View style={styles.productInfo}>
                 <Text style={styles.productName}>{product.brand}</Text>
                 <Text style={styles.productDescription}>{product.description}</Text>
               </View>
-              <View style={styles.productImageContainer}>
+              
+              <TouchableOpacity 
+                style={styles.productImageContainer}
+                onPress={() => openProductUrl(product.url)}
+              >
                 {product.localImage ? (
                   <Image 
                     source={{ uri: product.localImage }} 
-                    style={styles.productImage}
+                    style={iconStyles.productImage}
                     resizeMode="contain"
                   />
                 ) : typeof product.image === 'string' ? (
                   <Image 
                     source={{ uri: product.image }} 
-                    style={styles.productImage}
+                    style={iconStyles.productImage}
                     resizeMode="contain"
                   />
                 ) : (
                   <Image 
                     source={product.image} 
-                    style={styles.productImage}
+                    style={iconStyles.productImage}
                     resizeMode="contain"
                   />
                 )}
-              </View>
-              <Text style={styles.productPrice}>{product.price}</Text>
-              <TouchableOpacity style={styles.bookmarkButton}>
-                <Text style={styles.bookmarkIcon}>☐</Text>
               </TouchableOpacity>
-            </TouchableOpacity>
+              
+              <Text style={styles.productPrice}>{product.price}</Text>
+              
+              <TouchableOpacity 
+                style={styles.bookmarkButton}
+                onPress={() => toggleBookmark(`treatment-${product.id}`)}
+              >
+                {bookmarkedProducts[`treatment-${product.id}`] ? (
+                  <RedBookmarkIcon width={scaleWidth(24)} height={scaleWidth(24)} />
+                ) : (
+                  <BookmarkIcon width={scaleWidth(24)} height={scaleWidth(24)} />
+                )}
+              </TouchableOpacity>
+            </View>
           ))}
           
-          {/* Add some bottom padding */}
+          {/* Add bottom padding */}
           <View style={{ height: scaleWidth(100) }} />
         </View>
       </ScrollView>
@@ -225,46 +300,26 @@ export const ResultsScreen = ({ navigation, route }: ResultsScreenProps) => {
       {/* Bottom navigation */}
       <View style={styles.navBarContainer}>
         <View style={styles.bottomNav}>
-          <TouchableOpacity 
-            style={styles.navItem}
-            onPress={() => navigation.navigate('Home')}
-          >
-            <Image 
-              source={require('../../../assets/home.png')}
-              style={styles.navIcon}
-              resizeMode="contain"
-            />
-          </TouchableOpacity>
-          
-          <Text style={styles.navArrow}>{'>'}</Text>
-          
-          <TouchableOpacity style={[styles.navItem, styles.activeNavItem]}>
-            <Image 
-              source={require('../../../assets/scan.png')}
-              style={styles.navIcon}
-              resizeMode="contain"
-            />
-          </TouchableOpacity>
-          
-          <Text style={styles.navArrow}>{'>'}</Text>
-          
-          <TouchableOpacity style={styles.navItem}>
-            <Image 
-              source={require('../../../assets/wand.png')}
-              style={styles.navIcon}
-              resizeMode="contain"
-            />
-          </TouchableOpacity>
-          
-          <Text style={styles.navArrow}>{'>'}</Text>
-          
-          <TouchableOpacity style={styles.navItem}>
-            <Image 
-              source={require('../../../assets/tag.png')}
-              style={styles.navIcon}
-              resizeMode="contain"
-            />
-          </TouchableOpacity>
+          {navigationItems.map((item, index) => (
+            <TouchableOpacity
+              key={index}
+              style={[
+                styles.navItem,
+                item.active && styles.activeNavItem
+              ]}
+              onPress={item.onPress}
+              disabled={!item.onPress}
+            >
+              <Image
+                source={item.icon}
+                style={[
+                  index % 2 === 1 ? iconStyles.arrowIcon : iconStyles.navIcon,
+                ]}
+                tintColor={item.active ? '#FFFFFF' : '#000000'}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
+          ))}
         </View>
       </View>
     </SafeAreaView>
@@ -285,30 +340,21 @@ const styles = StyleSheet.create({
     paddingBottom: scaleWidth(10),
   },
   headerTitle: {
-    fontSize: scaleWidth(24),
+    fontSize: scaleWidth(38),
     fontWeight: 'bold',
     fontFamily: "InstrumentSans-Bold",
   },
-  returnButton: {
+  homeButton: {
     backgroundColor: '#CA5A5E',
-    paddingVertical: scaleWidth(6),
-    paddingHorizontal: scaleWidth(15),
+    paddingVertical: scaleWidth(8),
+    paddingHorizontal: scaleWidth(20),
     borderRadius: scaleWidth(20),
   },
-  returnButtonText: {
+  homeButtonText: {
     color: 'white',
-    fontSize: scaleWidth(14),
-    fontFamily: "InstrumentSans-Regular",
-  },
-  returnArrow: {
-    color: 'white',
-    fontSize: scaleWidth(14),
-    marginRight: scaleWidth(4),
-  },
-  backButtonInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    fontSize: scaleWidth(18),
+    fontWeight: 'bold',
+    fontFamily: "InstrumentSans-Bold",
   },
   scrollContainer: {
     flex: 1,
@@ -320,11 +366,13 @@ const styles = StyleSheet.create({
     marginVertical: scaleWidth(20),
   },
   analysisItem: {
-    backgroundColor: '#F5F5F5',
+    backgroundColor: 'white',
     borderRadius: scaleWidth(15),
     padding: scaleWidth(15),
     width: '30%',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#ECECEC',
   },
   analysisLabel: {
     fontSize: scaleWidth(14),
@@ -333,7 +381,7 @@ const styles = StyleSheet.create({
     fontFamily: "InstrumentSans-Regular",
   },
   analysisValue: {
-    fontSize: scaleWidth(24),
+    fontSize: scaleWidth(28),
     fontWeight: 'bold',
     marginBottom: scaleWidth(5),
     fontFamily: "InstrumentSans-Bold",
@@ -354,44 +402,45 @@ const styles = StyleSheet.create({
     fontFamily: "InstrumentSans-Bold",
   },
   productCard: {
-    backgroundColor: '#ECECEC',
+    backgroundColor: '#E7E0E0',
     borderRadius: scaleWidth(15),
     padding: scaleWidth(15),
     marginBottom: scaleWidth(15),
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     position: 'relative',
+    minHeight: scaleWidth(120),
   },
   productInfo: {
     flex: 1,
-    paddingRight: scaleWidth(10),
+    paddingRight: scaleWidth(110),
   },
   productName: {
     fontSize: scaleWidth(16),
     fontWeight: 'bold',
-    marginBottom: scaleWidth(5),
+    marginBottom: scaleWidth(8),
     fontFamily: "InstrumentSans-Bold",
   },
   productDescription: {
     fontSize: scaleWidth(14),
     color: '#555',
     fontFamily: "InstrumentSans-Regular",
+    flexWrap: 'wrap',
   },
   productImageContainer: {
-    width: scaleWidth(80),
-    height: scaleWidth(80),
-    marginRight: scaleWidth(40), // Make space for price
-    transform: [{ rotate: '-10deg' }], // Tilt the image container slightly
-  },
-  productImage: {
-    width: '100%',
-    height: '100%',
-    transform: [{ scale: 1.2 }], // Make the image slightly larger to fill the container
+    width: scaleWidth(100),
+    height: scaleWidth(100),
+    position: 'absolute',
+    right: scaleWidth(40),
+    top: '50%',
+    transform: [{ translateY: scaleWidth(-50) }],
+    zIndex: 1,
   },
   productPrice: {
     position: 'absolute',
-    right: scaleWidth(45),
-    fontSize: scaleWidth(18),
+    right: scaleWidth(20),
+    bottom: scaleWidth(15),
+    fontSize: scaleWidth(24),
     fontWeight: 'bold',
     fontFamily: "InstrumentSans-Bold",
   },
@@ -399,10 +448,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: scaleWidth(15),
     right: scaleWidth(15),
-  },
-  bookmarkIcon: {
-    fontSize: scaleWidth(24),
-    color: '#777',
+    zIndex: 2,
   },
   navBarContainer: {
     width: '100%',
@@ -412,30 +458,25 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     borderTopWidth: 1,
     borderTopColor: '#EEE',
+    position: 'absolute',
+    bottom: 0,
   },
   bottomNav: {
     flexDirection: 'row',
-    justifyContent: 'space-evenly',
+    justifyContent: 'center',
     alignItems: 'center',
-    width: '90%',
+    width: '75%',
+    paddingBottom: scaleWidth(5),
   },
   navItem: {
-    width: scaleWidth(40),
-    height: scaleWidth(40),
+    width: scaleWidth(42),
+    height: scaleWidth(42),
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: scaleWidth(20),
+    borderRadius: scaleWidth(21),
   },
   activeNavItem: {
     backgroundColor: '#CA5A5E',
-  },
-  navIcon: {
-    width: scaleWidth(24),
-    height: scaleWidth(24),
-  },
-  navArrow: {
-    fontSize: scaleWidth(16),
-    color: '#888',
   },
 });
 

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import { View, Text, ActivityIndicator } from 'react-native';
@@ -19,6 +19,9 @@ import { PrivacyPolicyScreen } from './src/screens/PrivacyPolicyScreen';
 
 // Auth Context
 import { AuthProvider, useAuth } from './src/context/AuthContext';
+
+// Import utils
+import { initializeBackgroundRemoval } from './src/utils/skinAnalysis';
 
 // Initialize Firebase
 import './src/lib/firebase';
@@ -105,6 +108,11 @@ export default function App() {
     'InstrumentSans-SemiBold': require('./assets/fonts/Instrument_Sans/static/InstrumentSans-SemiBold.ttf'),
     'InstrumentSans-Medium': require('./assets/fonts/Instrument_Sans/static/InstrumentSans-Medium.ttf'),
   });
+
+  useEffect(() => {
+    // Initialize the background removal service
+    initializeBackgroundRemoval();
+  }, []);
 
   if (!fontsLoaded) {
     return <View><Text>Loading...</Text></View>;
