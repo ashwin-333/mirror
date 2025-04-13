@@ -50,7 +50,7 @@ The output will show your IP address, typically something like `192.168.1.100` o
 ```bash
 ipconfig
 ```
-Look for the "IPv4 Address" under your active network adapter.
+Look for the "IPv4 Address" under your active network adapter. 
 
 ## Running All Services
 
