@@ -3,6 +3,7 @@ import { View, Text, Image, TouchableOpacity, StyleSheet, Dimensions, Platform, 
 import { SafeAreaView } from "react-native-safe-area-context";
 import { HomeMainSvg } from "../../components/HomeMainSvg";
 import HairBtnSvg from '../../components/HairBtnSvg';
+import FaceBtnSvg from '../../components/FaceBtnSvg';
 
 // We'll use these base values to preserve the exact ratio from your iPhone design
 // Adjust 393 to whatever your "base" design width is.
@@ -71,11 +72,7 @@ export const IphonePro = ({ navigation }: IphoneProProps): JSX.Element => {
 
             {/* Scan FACE option */}
             <TouchableOpacity style={styles.scanButton} onPress={() => handleScanPress('face')}>
-              <Image
-                source={require("../../../assets/face-btn.png")}
-                style={styles.scanButtonImage}
-                resizeMode="contain"
-              />
+              <FaceBtnSvg />
             </TouchableOpacity>
           </View>
         </View>
