@@ -75,7 +75,12 @@ export const CameraScreen = ({ navigation, route }: CameraScreenProps) => {
     if (cameraRef.current) {
       try {
         const photo = await cameraRef.current.takePictureAsync();
-        navigation.navigate('Loading', { mode, photoUri: photo.uri });
+        // If hair mode, go to HairInfo screen, otherwise go directly to Loading
+        if (mode === 'hair') {
+          navigation.navigate('HairInfo', { mode, photoUri: photo.uri });
+        } else {
+          navigation.navigate('Loading', { mode, photoUri: photo.uri });
+        }
       } catch (error) {
         console.error('Error taking picture:', error);
         navigation.navigate('Loading', { mode });
@@ -115,8 +120,12 @@ export const CameraScreen = ({ navigation, route }: CameraScreenProps) => {
       });
       
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        // Navigate to the loading screen with the selected image URI
-        navigation.navigate('Loading', { mode, photoUri: result.assets[0].uri });
+        // If hair mode, go to HairInfo screen, otherwise go directly to Loading
+        if (mode === 'hair') {
+          navigation.navigate('HairInfo', { mode, photoUri: result.assets[0].uri });
+        } else {
+          navigation.navigate('Loading', { mode, photoUri: result.assets[0].uri });
+        }
       }
     } catch (error) {
       console.error('Error selecting photo:', error);
@@ -152,7 +161,13 @@ export const CameraScreen = ({ navigation, route }: CameraScreenProps) => {
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.permissionButton, { marginTop: 10, backgroundColor: '#666' }]}
-            onPress={() => navigation.navigate('Loading', { mode })}
+            onPress={() => {
+              if (mode === 'hair') {
+                navigation.navigate('HairInfo', { mode });
+              } else {
+                navigation.navigate('Loading', { mode });
+              }
+            }}
           >
             <Text style={styles.permissionButtonText}>Continue Anyway</Text>
           </TouchableOpacity>

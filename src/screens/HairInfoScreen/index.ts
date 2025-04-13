@@ -1,0 +1,1 @@
+export { HairInfoScreen } from './HairInfoScreen'; 
