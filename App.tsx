@@ -14,6 +14,8 @@ import { ResultsScreen } from './src/screens/ResultsScreen/ResultsScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen/ProfileScreen';
 import { WelcomeScreen } from './src/screens/WelcomeScreen/WelcomeScreen';
 import { SignUpScreen } from './src/screens/SignUpScreen/SignUpScreen';
+import { TermsAndConditionsScreen } from './src/screens/TermsAndConditionsScreen';
+import { PrivacyPolicyScreen } from './src/screens/PrivacyPolicyScreen';
 
 // Initialize Firebase
 import './src/lib/firebase';
@@ -27,6 +29,8 @@ type RootStackParamList = {
   Loading: { mode: 'face' | 'hair' };
   Results: { mode: 'face' | 'hair' };
   Profile: undefined;
+  TermsAndConditions: undefined;
+  PrivacyPolicy: undefined;
 };
 
 // Create the stack navigator
@@ -63,6 +67,8 @@ export default function App() {
           <Stack.Screen name="Loading" component={LoadingScreen} />
           <Stack.Screen name="Results" component={ResultsScreen} />
           <Stack.Screen name="Profile" component={ProfileScreen} />
+          <Stack.Screen name="TermsAndConditions" component={TermsAndConditionsScreen} />
+          <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>

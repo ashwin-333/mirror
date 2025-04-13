@@ -60,13 +60,11 @@ export const SignUpScreen = ({ navigation }: SignUpScreenProps) => {
   };
 
   const navigateToTerms = () => {
-    // Will navigate to Terms & Conditions in the future
-    console.log('Navigate to Terms & Conditions');
+    navigation.navigate('TermsAndConditions');
   };
 
   const navigateToPrivacy = () => {
-    // Will navigate to Privacy Policy in the future
-    console.log('Navigate to Privacy Policy');
+    navigation.navigate('PrivacyPolicy');
   };
 
   return (
@@ -140,22 +138,24 @@ export const SignUpScreen = ({ navigation }: SignUpScreenProps) => {
             ]} />
           </TouchableOpacity>
           
-          <Text style={styles.termsText}>
-            I agree to the{' '}
-            <Text 
-              style={styles.termsTextUnderlined}
-              onPress={navigateToTerms}
-            >
-              Terms & Conditions
+          <View style={styles.termsTextContainer}>
+            <Text style={styles.termsText}>
+              I agree to the{' '}
             </Text>
-            {' '}and{' '}
-            <Text 
-              style={styles.termsTextUnderlined}
-              onPress={navigateToPrivacy}
-            >
-              Privacy Policy
+            <TouchableOpacity onPress={navigateToTerms}>
+              <Text style={[styles.termsText, styles.termsTextUnderlined]}>
+                Terms & Conditions
+              </Text>
+            </TouchableOpacity>
+            <Text style={styles.termsText}>
+              {' '}and{' '}
             </Text>
-          </Text>
+            <TouchableOpacity onPress={navigateToPrivacy}>
+              <Text style={[styles.termsText, styles.termsTextUnderlined]}>
+                Privacy Policy
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
         
         {/* Continue Button right below the confirm password field */}
@@ -227,7 +227,7 @@ const styles = StyleSheet.create({
   },
   termsContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginTop: scaleWidth(3),
     marginBottom: scaleWidth(4),
     marginLeft: scaleWidth(5),
@@ -247,6 +247,12 @@ const styles = StyleSheet.create({
   checkboxChecked: {
     backgroundColor: '#CA5A5E',
     borderColor: '#000',
+  },
+  termsTextContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
   },
   termsText: {
     fontSize: scaleWidth(12),
