@@ -150,24 +150,34 @@ export const authService = {
   async login(email: string, password: string) {
     try {
       console.log('API Service: Logging in user...');
+      const apiUrl = await getApiUrl();
       
-      // Create a fake successful response
-      const fakeResponse = {
-        _id: '123456789012345678901234',
-        name: 'Test User',
-        email: email,
-        profileImage: '',
-        token: 'test-token-123456789',
-      };
+      // Make the actual login request to the backend
+      const response = await fetch(`${apiUrl}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Login failed');
+      }
+      
+      const userData = await response.json();
+      console.log('API Service: Login successful');
       
       // Store token in AsyncStorage
-      await AsyncStorage.setItem(TOKEN_KEY, fakeResponse.token);
-      console.log('API Service: Login successful (bypassed API)');
+      if (userData.token) {
+        await AsyncStorage.setItem(TOKEN_KEY, userData.token);
+      }
       
-      return fakeResponse;
+      return userData;
     } catch (error: any) {
       console.error('API Service: Login error:', error.message);
-      throw { message: 'Login failed' };
+      throw { message: error.message || 'Login failed' };
     }
   },
   
@@ -193,13 +203,24 @@ export const authService = {
         return null;
       }
       
-      // Return hardcoded user data
-      return {
-        _id: '123456789012345678901234',
-        name: 'Test User',
-        email: 'test@example.com',
-        profileImage: '',
-      };
+      // Get the API URL
+      const apiUrl = await getApiUrl();
+      
+      // Make request to get user data
+      const response = await fetch(`${apiUrl}/auth/me`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to get user data');
+      }
+      
+      const userData = await response.json();
+      return userData;
     } catch (error: any) {
       console.error('API Service: Get current user error:', error.message);
       return null;

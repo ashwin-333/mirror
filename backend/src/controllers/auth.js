@@ -63,13 +63,28 @@ exports.login = async (req, res) => {
       return res.status(400).json({ message: 'Email and password required' });
     }
     
-    // Hardcoded success response for testing
+    // Find user by email
+    const user = await User.findOne({ email }).select('+password');
+    
+    // Check if user exists
+    if (!user) {
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+    
+    // Check if password matches
+    const isMatch = await user.matchPassword(password);
+    
+    if (!isMatch) {
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+    
+    // Return user data with token
     return res.json({
-      _id: '123456789012345678901234',
-      name: 'Test User',
-      email: email,
-      profileImage: '',
-      token: 'test-token-123456789',
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      profileImage: user.profileImage || '',
+      token: generateToken(user._id),
     });
     
   } catch (error) {
