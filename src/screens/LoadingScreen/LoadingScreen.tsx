@@ -25,7 +25,6 @@ export const LoadingScreen = ({ navigation, route }: LoadingScreenProps) => {
   const { mode, photoUri, hairInfo } = route.params;
   const spinAnimation = useRef(new Animated.Value(0)).current;
   const [error, setError] = useState<string | null>(null);
-  const [progress, setProgress] = useState<string>("Starting analysis...");
 
   useEffect(() => {
     // Start the spinner animation
@@ -61,15 +60,12 @@ export const LoadingScreen = ({ navigation, route }: LoadingScreenProps) => {
         }
         
         // Check server health before processing
-        setProgress("Checking background removal service...");
         await checkServerHealth();
         
         // Perform skin analysis using our utility
-        setProgress("Analyzing skin features...");
         const results = await performSkinAnalysis(photoUri);
         
         // Navigate to results screen with analysis data
-        setProgress("Loading results...");
         navigation.navigate('Results', { 
           mode,
           analysis: results.analysis,
@@ -78,7 +74,6 @@ export const LoadingScreen = ({ navigation, route }: LoadingScreenProps) => {
       } catch (err) {
         console.error('Error analyzing skin photo:', err);
         setError('Something went wrong with skin analysis. Please try again.');
-        setProgress("Using fallback recommendations...");
         
         // Navigate to results with fallback data after a delay
         setTimeout(() => {
@@ -87,7 +82,6 @@ export const LoadingScreen = ({ navigation, route }: LoadingScreenProps) => {
       }
     } else {
       // If no photo, wait a moment and navigate to results with default data
-      setProgress("No photo provided, using default data...");
       setTimeout(() => {
         navigation.navigate('Results', { mode });
       }, 2000);
@@ -105,7 +99,6 @@ export const LoadingScreen = ({ navigation, route }: LoadingScreenProps) => {
         }
         
         // Perform hair analysis
-        setProgress("Processing your hair...");
         const results = await performHairAnalysis(photoUri, hairInfo || {
           dandruff: null,
           dryness: null,
@@ -113,7 +106,6 @@ export const LoadingScreen = ({ navigation, route }: LoadingScreenProps) => {
         });
         
         // Navigate to HairResults screen with analysis data
-        setProgress("Loading results...");
         navigation.navigate('HairResults', { 
           analysis: results.analysis,
           recommendations: results.recommendations
@@ -121,7 +113,6 @@ export const LoadingScreen = ({ navigation, route }: LoadingScreenProps) => {
       } catch (err) {
         console.error('Error analyzing hair photo:', err);
         setError('Something went wrong with hair analysis. Please try again.');
-        setProgress("Using fallback recommendations...");
         
         // Navigate to HairResults with fallback data after a delay
         setTimeout(() => {
@@ -130,7 +121,6 @@ export const LoadingScreen = ({ navigation, route }: LoadingScreenProps) => {
       }
     } else {
       // If no photo, wait a moment and navigate to HairResults with default data
-      setProgress("No photo provided, using default data...");
       setTimeout(() => {
         navigation.navigate('HairResults', {});
       }, 2000);
@@ -188,9 +178,6 @@ export const LoadingScreen = ({ navigation, route }: LoadingScreenProps) => {
         <Text style={styles.title}>Hang tight.</Text>
         <Text style={styles.subtitle}>Mirror AI is working its magic...</Text>
         
-        {/* Progress message */}
-        <Text style={styles.progressText}>{progress}</Text>
-        
         {/* Error message if any */}
         {error && <Text style={styles.errorText}>{error}</Text>}
       </View>
@@ -245,6 +232,7 @@ const styles = StyleSheet.create({
     marginBottom: scaleWidth(10),
     textAlign: 'center',
     fontFamily: "InstrumentSans-Bold",
+    letterSpacing: -1,
   },
   subtitle: {
     fontSize: scaleWidth(16),
@@ -252,19 +240,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontFamily: "InstrumentSans-Regular",
     marginBottom: scaleWidth(20),
-  },
-  progressText: {
-    fontSize: scaleWidth(14),
-    color: '#555',
-    textAlign: 'center',
-    fontFamily: "InstrumentSans-Regular",
-    marginBottom: scaleWidth(20),
+    letterSpacing: -1,
   },
   errorText: {
     fontSize: scaleWidth(14),
     color: '#ca5a5e',
     textAlign: 'center',
     fontFamily: "InstrumentSans-Regular",
+    letterSpacing: -1,
   },
   navBarContainer: {
     position: 'absolute',

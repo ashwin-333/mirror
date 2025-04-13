@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions, StatusBar, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, StatusBar, Image, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ContinueButton } from '../../components/ContinueButton';
 
@@ -23,7 +23,20 @@ export const HairInfoScreen = ({ navigation, route }: HairInfoScreenProps) => {
   const [dryness, setDryness] = useState<string | null>(null);
   const [density, setDensity] = useState<string | null>(null);
 
+  // Check if all options are selected
+  const allOptionsSelected = dandruff !== null && dryness !== null && density !== null;
+
   const handleContinue = () => {
+    // Validate that all options are selected
+    if (!allOptionsSelected) {
+      Alert.alert(
+        "Selection Required",
+        "Please select one option for each category before continuing.",
+        [{ text: "OK" }]
+      );
+      return;
+    }
+
     // Navigate to the loading screen with the selected options
     navigation.navigate('Loading', {
       mode,
@@ -56,93 +69,111 @@ export const HairInfoScreen = ({ navigation, route }: HairInfoScreenProps) => {
       <View style={styles.content}>
         <Text style={styles.title}>Great,</Text>
         <Text style={styles.subtitle}>Now answer some</Text>
-        <Text style={styles.subtitle}> questions to help Mirror</Text>
+        <Text style={styles.subtitle}>questions to help Mirror</Text>
         <Text style={styles.subtitle}>give you the best results.</Text>
         
         {/* Dandruff section */}
-        <Text style={styles.sectionTitle}>Dandruff</Text>
-        <View style={styles.optionsRow}>
-          <TouchableOpacity 
-            style={[styles.option, dandruff === 'None' && styles.selectedOption]} 
-            onPress={() => setDandruff('None')}
-          >
-            <Text style={[styles.optionText, dandruff === 'None' && styles.selectedOptionText]}>None</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.option, dandruff === 'Light' && styles.selectedOption]} 
-            onPress={() => setDandruff('Light')}
-          >
-            <Text style={[styles.optionText, dandruff === 'Light' && styles.selectedOptionText]}>Light</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.option, dandruff === 'Moderate' && styles.selectedOption]} 
-            onPress={() => setDandruff('Moderate')}
-          >
-            <Text style={[styles.optionText, dandruff === 'Moderate' && styles.selectedOptionText]}>Moderate</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.option, dandruff === 'Heavy' && styles.selectedOption]} 
-            onPress={() => setDandruff('Heavy')}
-          >
-            <Text style={[styles.optionText, dandruff === 'Heavy' && styles.selectedOptionText]}>Heavy</Text>
-          </TouchableOpacity>
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionTitle}>
+            Dandruff
+            {dandruff === null && <Text style={styles.requiredIndicator}>*</Text>}
+          </Text>
+          <View style={styles.optionsRow}>
+            <TouchableOpacity 
+              style={[styles.option, dandruff === 'None' && styles.selectedOption]} 
+              onPress={() => setDandruff('None')}
+            >
+              <Text style={[styles.optionText, dandruff === 'None' && styles.selectedOptionText]}>None</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.option, dandruff === 'Light' && styles.selectedOption]} 
+              onPress={() => setDandruff('Light')}
+            >
+              <Text style={[styles.optionText, dandruff === 'Light' && styles.selectedOptionText]}>Light</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.option, dandruff === 'Moderate' && styles.selectedOption]} 
+              onPress={() => setDandruff('Moderate')}
+            >
+              <Text style={[styles.optionText, dandruff === 'Moderate' && styles.selectedOptionText]}>Moderate</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.option, dandruff === 'Heavy' && styles.selectedOption]} 
+              onPress={() => setDandruff('Heavy')}
+            >
+              <Text style={[styles.optionText, dandruff === 'Heavy' && styles.selectedOptionText]}>Heavy</Text>
+            </TouchableOpacity>
+          </View>
         </View>
         
         {/* Dryness section */}
-        <Text style={styles.sectionTitle}>Dryness</Text>
-        <View style={styles.optionsRow}>
-          <TouchableOpacity 
-            style={[styles.option, dryness === 'None' && styles.selectedOption]} 
-            onPress={() => setDryness('None')}
-          >
-            <Text style={[styles.optionText, dryness === 'None' && styles.selectedOptionText]}>None</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.option, dryness === 'Light' && styles.selectedOption]} 
-            onPress={() => setDryness('Light')}
-          >
-            <Text style={[styles.optionText, dryness === 'Light' && styles.selectedOptionText]}>Light</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.option, dryness === 'Moderate' && styles.selectedOption]} 
-            onPress={() => setDryness('Moderate')}
-          >
-            <Text style={[styles.optionText, dryness === 'Moderate' && styles.selectedOptionText]}>Moderate</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.option, dryness === 'Strong' && styles.selectedOption]} 
-            onPress={() => setDryness('Strong')}
-          >
-            <Text style={[styles.optionText, dryness === 'Strong' && styles.selectedOptionText]}>Strong</Text>
-          </TouchableOpacity>
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionTitle}>
+            Dryness
+            {dryness === null && <Text style={styles.requiredIndicator}>*</Text>}
+          </Text>
+          <View style={styles.optionsRow}>
+            <TouchableOpacity 
+              style={[styles.option, dryness === 'None' && styles.selectedOption]} 
+              onPress={() => setDryness('None')}
+            >
+              <Text style={[styles.optionText, dryness === 'None' && styles.selectedOptionText]}>None</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.option, dryness === 'Light' && styles.selectedOption]} 
+              onPress={() => setDryness('Light')}
+            >
+              <Text style={[styles.optionText, dryness === 'Light' && styles.selectedOptionText]}>Light</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.option, dryness === 'Moderate' && styles.selectedOption]} 
+              onPress={() => setDryness('Moderate')}
+            >
+              <Text style={[styles.optionText, dryness === 'Moderate' && styles.selectedOptionText]}>Moderate</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.option, dryness === 'Strong' && styles.selectedOption]} 
+              onPress={() => setDryness('Strong')}
+            >
+              <Text style={[styles.optionText, dryness === 'Strong' && styles.selectedOptionText]}>Strong</Text>
+            </TouchableOpacity>
+          </View>
         </View>
         
         {/* Density section */}
-        <Text style={styles.sectionTitle}>Density</Text>
-        <View style={styles.optionsRow}>
-          <TouchableOpacity 
-            style={[styles.option, density === 'Thin' && styles.selectedOption]} 
-            onPress={() => setDensity('Thin')}
-          >
-            <Text style={[styles.optionText, density === 'Thin' && styles.selectedOptionText]}>Thin</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.option, density === 'Average' && styles.selectedOption]} 
-            onPress={() => setDensity('Average')}
-          >
-            <Text style={[styles.optionText, density === 'Average' && styles.selectedOptionText]}>Average</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.option, density === 'Thick' && styles.selectedOption]} 
-            onPress={() => setDensity('Thick')}
-          >
-            <Text style={[styles.optionText, density === 'Thick' && styles.selectedOptionText]}>Thick</Text>
-          </TouchableOpacity>
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionTitle}>
+            Density
+            {density === null && <Text style={styles.requiredIndicator}>*</Text>}
+          </Text>
+          <View style={styles.optionsRow}>
+            <TouchableOpacity 
+              style={[styles.option, density === 'Thin' && styles.selectedOption]} 
+              onPress={() => setDensity('Thin')}
+            >
+              <Text style={[styles.optionText, density === 'Thin' && styles.selectedOptionText]}>Thin</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.option, density === 'Average' && styles.selectedOption]} 
+              onPress={() => setDensity('Average')}
+            >
+              <Text style={[styles.optionText, density === 'Average' && styles.selectedOptionText]}>Average</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.option, density === 'Thick' && styles.selectedOption]} 
+              onPress={() => setDensity('Thick')}
+            >
+              <Text style={[styles.optionText, density === 'Thick' && styles.selectedOptionText]}>Thick</Text>
+            </TouchableOpacity>
+          </View>
         </View>
         
         {/* Continue button */}
         <View style={styles.continueButtonWrapper}>
-          <ContinueButton onPress={handleContinue} />
+          <ContinueButton 
+            onPress={handleContinue} 
+            disabled={!allOptionsSelected}
+          />
         </View>
       </View>
       
@@ -203,6 +234,7 @@ const styles = StyleSheet.create({
   backText: {
     fontSize: scaleWidth(16),
     fontFamily: 'InstrumentSans-Regular',
+    letterSpacing: -1,
   },
   content: {
     flex: 1,
@@ -211,29 +243,34 @@ const styles = StyleSheet.create({
     paddingBottom: scaleWidth(80),
   },
   title: {
-    fontSize: scaleWidth(32),
+    fontSize: scaleWidth(35),
     fontWeight: 'bold',
     marginBottom: scaleWidth(10),
     fontFamily: 'InstrumentSans-Bold',
+    letterSpacing: -1,
   },
   subtitle: {
     fontSize: scaleWidth(24),
     marginBottom: scaleWidth(0),
     lineHeight: scaleWidth(30),
     fontWeight: '500',
-    fontFamily: 'InstrumentSans-Regular',
+    fontFamily: 'InstrumentSans-Medium',
+    letterSpacing: -1,
+  },
+  sectionContainer: {
+    marginTop: scaleWidth(30),
   },
   sectionTitle: {
-    fontSize: scaleWidth(18),
+    fontSize: scaleWidth(22),
     fontWeight: '500',
-    marginTop: scaleWidth(30),
-    marginBottom: scaleWidth(15),
-    fontFamily: 'InstrumentSans-SemiBold',
+    marginBottom: scaleWidth(8),
+    fontFamily: 'InstrumentSans-Medium',
+    letterSpacing: -1,
   },
   optionsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: scaleWidth(15),
+    marginBottom: scaleWidth(0),
     width: '100%',
   },
   option: {
@@ -251,9 +288,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#CA5A5E',
   },
   optionText: {
-    fontSize: scaleWidth(14),
-    fontFamily: 'InstrumentSans-Regular',
+    fontSize: scaleWidth(15),
+    fontFamily: 'InstrumentSans-Medium',
     color: '#000000',
+    letterSpacing: -1,
   },
   selectedOptionText: {
     color: 'white',
@@ -300,6 +338,12 @@ const styles = StyleSheet.create({
   continueButtonWrapper: {
     alignItems: 'flex-end',
     marginTop: scaleWidth(40),
+  },
+  requiredIndicator: {
+    color: '#CA5A5E',
+    fontSize: scaleWidth(22),
+    marginLeft: scaleWidth(5),
+    letterSpacing: -1,
   },
 });
 
