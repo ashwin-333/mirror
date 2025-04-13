@@ -333,6 +333,6 @@ def post_process_alpha(output_img):
 
 if __name__ == '__main__':
     # Use port 5001 instead of 5000 to avoid conflict with AirPlay on macOS
-    port = int(os.environ.get("PORT", 5001))
+    port = 5001
     # Run the app with threading enabled
     app.run(host='0.0.0.0', port=port, debug=True, threaded=True) 
