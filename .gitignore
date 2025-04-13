@@ -32,4 +32,12 @@ yarn-error.log*
 *.p12
 *.key
 *.mobileprovision
-*.orig.* 
+*.orig.*
+
+# Python
+venv/
+server/venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so 
