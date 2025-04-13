@@ -1,26 +1,99 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import NetInfo from '@react-native-community/netinfo';
+import { Platform, NativeModules } from 'react-native';
+import Constants from 'expo-constants';
 
-// API configuration
-// const API_URL = 'http://10.0.2.2:5002/api'; // For Android emulator
-// const API_URL = 'http://localhost:5002/api'; // For iOS simulator
-const API_URL = 'http://10.0.0.200:5002/api'; // For access from phone on same network
-// const API_URL = 'https://your-production-api.com/api'; // For production
+// Server port from environment variables or default to 5002
+const SERVER_PORT = Constants.expoConfig?.extra?.serverPort || '5002';
+
+// API endpoint path
+const API_PATH = '/api';
+
+// Developer's IP address from environment variables
+const DEVELOPER_IP = Constants.expoConfig?.extra?.developerIp || '10.0.0.174';
+
+// Function to check if running on iOS simulator
+const isIOSSimulator = (): boolean => {
+  if (Platform.OS !== 'ios') return false;
+  
+  // Check for simulator-specific properties
+  return Platform.constants.systemName === 'iOS' && 
+         (NativeModules.PlatformConstants?.interfaceIdiom === 'iPhone' || 
+          NativeModules.PlatformConstants?.interfaceIdiom === 'iPad') && 
+         !NativeModules.PlatformConstants?.forceTouchAvailable;
+};
+
+// Function to get the appropriate API URL based on platform and environment
+const getApiUrl = async () => {
+  // For development
+  if (__DEV__) {
+    // For iOS simulator
+    if (isIOSSimulator()) {
+      return `http://localhost:${SERVER_PORT}${API_PATH}`;
+    }
+    
+    // For Android emulator
+    if (Platform.OS === 'android' && !isRunningOnPhysicalDevice()) {
+      return `http://10.0.2.2:${SERVER_PORT}${API_PATH}`;
+    }
+
+    // For physical devices, use the developer's IP from environment variables
+    console.log(`Using developer IP address: ${DEVELOPER_IP}`);
+    return `http://${DEVELOPER_IP}:${SERVER_PORT}${API_PATH}`;
+  }
+
+  // For production
+  return Constants.expoConfig?.extra?.apiUrl || 'https://your-production-api.com/api';
+};
+
+// Helper function to detect if running on a physical device
+const isRunningOnPhysicalDevice = (): boolean => {
+  if (Platform.OS === 'ios') {
+    return !isIOSSimulator();
+  }
+  
+  // For Android, this is a simplistic check and might need refinement
+  if (Platform.OS === 'android') {
+    return !NativeModules.PlatformConstants?.usingHermesEngine;
+  }
+  
+  return false;
+};
 
 // Token storage key
 const TOKEN_KEY = '@auth_token';
 
-// Create axios instance
+// Create axios instance with placeholder, we'll update the baseURL later
 const api = axios.create({
-  baseURL: API_URL,
+  baseURL: 'http://placeholder-will-be-replaced',
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
+// Initialize API configuration
+const initializeApi = async () => {
+  try {
+    const apiUrl = await getApiUrl();
+    api.defaults.baseURL = apiUrl;
+    console.log('API URL configured:', apiUrl);
+  } catch (error) {
+    console.error('Failed to initialize API URL:', error);
+  }
+};
+
+// Call initialization right away
+initializeApi();
+
 // Add a request interceptor for authentication
 api.interceptors.request.use(
   async (config) => {
+    // If baseURL is still the placeholder, try to update it
+    if (config.baseURL === 'http://placeholder-will-be-replaced') {
+      config.baseURL = await getApiUrl();
+    }
+    
     const token = await AsyncStorage.getItem(TOKEN_KEY);
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
