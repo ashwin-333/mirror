@@ -96,8 +96,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     try {
       console.log('AuthContext: Logging out user...');
-      await authService.logout();
+      // Clear the current user before logout to prevent any race conditions
       setUser(null);
+      await authService.logout();
       console.log('AuthContext: Logout successful');
     } catch (error) {
       console.error('AuthContext: Logout error:', error);

@@ -154,6 +154,8 @@ export const authService = {
   async logout() {
     try {
       await AsyncStorage.removeItem(TOKEN_KEY);
+      // Also clear the profile image from AsyncStorage
+      await AsyncStorage.removeItem('@profile_image');
       return true;
     } catch (error) {
       console.error('API Service: Logout error:', error);

@@ -57,15 +57,10 @@ export const IphonePro = ({ navigation }: IphoneProProps): JSX.Element => {
         // The image is now a complete data URL from the server
         setProfileImage(user.profileImage);
       } else {
-        console.log('IphonePro: No profile image in user data, trying local storage');
-        // Fall back to local storage if no server image
-        const savedImage = await AsyncStorage.getItem(PROFILE_IMAGE_KEY);
-        if (savedImage) {
-          console.log('IphonePro: Using profile image from local storage');
-          setProfileImage(savedImage);
-        } else {
-          console.log('IphonePro: No profile image found in local storage');
-        }
+        console.log('IphonePro: No profile image in user data, using default avatar');
+        // Clear any existing cached image to ensure proper reset between accounts
+        await AsyncStorage.removeItem(PROFILE_IMAGE_KEY);
+        setProfileImage(null);
       }
     } catch (error) {
       console.error('Error loading profile image:', error);
@@ -151,7 +146,7 @@ export const IphonePro = ({ navigation }: IphoneProProps): JSX.Element => {
               </View>
             ) : (
               <Image
-                source={profileImage ? { uri: profileImage } : require("../../../assets/ellipse-1.png")}
+                source={profileImage ? { uri: profileImage } : require("../../../assets/profile-avatar.png")}
                 style={styles.profileImage}
                 resizeMode="cover"
               />

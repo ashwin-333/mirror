@@ -22,11 +22,13 @@ exports.register = async (req, res) => {
       return res.status(400).json({ message: 'User already exists' });
     }
 
-    // Create user
+    // Create user with empty profile image
     const user = await User.create({
       name,
       email,
       password,
+      profileImage: '', // Explicitly set empty profile image
+      profileImageType: ''
     });
 
     if (user) {
@@ -34,6 +36,7 @@ exports.register = async (req, res) => {
         _id: user._id,
         name: user.name,
         email: user.email,
+        profileImage: '', // Don't return any profile image for new users
         token: generateToken(user._id),
       });
     } else {

@@ -95,9 +95,11 @@ export const ProfileScreen: React.FC = () => {
       // Also save to local storage as a fallback
       saveProfileImageToLocalStorage(user.profileImage);
     } else {
-      console.log('ProfileScreen: No profile image in user data, trying local storage');
-      // If no server image, try local storage
-      loadProfileImageFromLocalStorage();
+      console.log('ProfileScreen: No profile image in user data, using default avatar');
+      // Clear any existing profile image to ensure proper reset between accounts
+      AsyncStorage.removeItem(PROFILE_IMAGE_KEY).then(() => {
+        setProfileImage(null);
+      });
     }
   }, [user]);
   
@@ -337,7 +339,7 @@ export const ProfileScreen: React.FC = () => {
               </View>
             ) : (
               <Image
-                source={profileImage ? { uri: profileImage } : require('../../../assets/profile.png')}
+                source={profileImage ? { uri: profileImage } : require('../../../assets/profile-avatar.png')}
                 style={styles.profileImage}
               />
             )}
