@@ -9,6 +9,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 // Import screens
 import { IphonePro } from './src/screens/IphonePro';
 import { CameraScreen } from './src/screens/CameraScreen/CameraScreen';
+import { HairInfoScreen } from './src/screens/HairInfoScreen';
 import { LoadingScreen } from './src/screens/LoadingScreen/LoadingScreen';
 import { ResultsScreen } from './src/screens/ResultsScreen/ResultsScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen/ProfileScreen';
@@ -37,7 +38,8 @@ type AuthStackParamList = {
 type AppStackParamList = {
   Home: undefined;
   Camera: { mode: 'face' | 'hair' };
-  Loading: { mode: 'face' | 'hair' };
+  HairInfo: { mode: 'face' | 'hair'; photoUri?: string };
+  Loading: { mode: 'face' | 'hair'; photoUri?: string; hairInfo?: any };
   Results: { mode: 'face' | 'hair' };
   Profile: undefined;
   TermsAndConditions: undefined;
@@ -78,6 +80,7 @@ const AppNavigator = () => {
     >
       <AppStack.Screen name="Home" component={IphonePro} />
       <AppStack.Screen name="Camera" component={CameraScreen} />
+      <AppStack.Screen name="HairInfo" component={HairInfoScreen} />
       <AppStack.Screen name="Loading" component={LoadingScreen} />
       <AppStack.Screen name="Results" component={ResultsScreen} />
       <AppStack.Screen name="Profile" component={ProfileScreen} />
