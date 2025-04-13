@@ -1,7 +1,7 @@
 import React from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
-import { View, Text } from 'react-native';
+import { View, Text, ActivityIndicator } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -17,13 +17,21 @@ import { SignUpScreen } from './src/screens/SignUpScreen/SignUpScreen';
 import { TermsAndConditionsScreen } from './src/screens/TermsAndConditionsScreen';
 import { PrivacyPolicyScreen } from './src/screens/PrivacyPolicyScreen';
 
+// Auth Context
+import { AuthProvider, useAuth } from './src/context/AuthContext';
+
 // Initialize Firebase
 import './src/lib/firebase';
 
-// Define the navigation stack parameter list
-type RootStackParamList = {
+// Define the navigation stack parameter lists
+type AuthStackParamList = {
   Welcome: undefined;
   SignUp: undefined;
+  TermsAndConditions: undefined;
+  PrivacyPolicy: undefined;
+};
+
+type AppStackParamList = {
   Home: undefined;
   Camera: { mode: 'face' | 'hair' };
   Loading: { mode: 'face' | 'hair' };
@@ -33,8 +41,62 @@ type RootStackParamList = {
   PrivacyPolicy: undefined;
 };
 
-// Create the stack navigator
-const Stack = createStackNavigator<RootStackParamList>();
+// Create the stack navigators
+const AuthStack = createStackNavigator<AuthStackParamList>();
+const AppStack = createStackNavigator<AppStackParamList>();
+
+// Auth navigator
+const AuthNavigator = () => {
+  return (
+    // @ts-ignore - id property is causing type issues
+    <AuthStack.Navigator
+      screenOptions={{
+        headerShown: false,
+        cardStyle: { backgroundColor: 'white' }
+      }}
+    >
+      <AuthStack.Screen name="Welcome" component={WelcomeScreen} />
+      <AuthStack.Screen name="SignUp" component={SignUpScreen} />
+      <AuthStack.Screen name="TermsAndConditions" component={TermsAndConditionsScreen} />
+      <AuthStack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
+    </AuthStack.Navigator>
+  );
+};
+
+// App navigator
+const AppNavigator = () => {
+  return (
+    // @ts-ignore - id property is causing type issues
+    <AppStack.Navigator
+      screenOptions={{
+        headerShown: false,
+        cardStyle: { backgroundColor: 'white' }
+      }}
+    >
+      <AppStack.Screen name="Home" component={IphonePro} />
+      <AppStack.Screen name="Camera" component={CameraScreen} />
+      <AppStack.Screen name="Loading" component={LoadingScreen} />
+      <AppStack.Screen name="Results" component={ResultsScreen} />
+      <AppStack.Screen name="Profile" component={ProfileScreen} />
+      <AppStack.Screen name="TermsAndConditions" component={TermsAndConditionsScreen} />
+      <AppStack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
+    </AppStack.Navigator>
+  );
+};
+
+function Navigation() {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#CA5A5E" />
+      </View>
+    );
+  }
+
+  return user ? <AppNavigator /> : <AuthNavigator />;
+}
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -49,28 +111,13 @@ export default function App() {
   }
 
   return (
-    <SafeAreaProvider>
-      <NavigationContainer>
-        <StatusBar style="auto" />
-        <Stack.Navigator 
-          id="RootNavigator"
-          initialRouteName="Welcome"
-          screenOptions={{
-            headerShown: false,
-            cardStyle: { backgroundColor: 'white' }
-          }}
-        >
-          <Stack.Screen name="Welcome" component={WelcomeScreen} />
-          <Stack.Screen name="SignUp" component={SignUpScreen} />
-          <Stack.Screen name="Home" component={IphonePro} />
-          <Stack.Screen name="Camera" component={CameraScreen} />
-          <Stack.Screen name="Loading" component={LoadingScreen} />
-          <Stack.Screen name="Results" component={ResultsScreen} />
-          <Stack.Screen name="Profile" component={ProfileScreen} />
-          <Stack.Screen name="TermsAndConditions" component={TermsAndConditionsScreen} />
-          <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
-        </Stack.Navigator>
-      </NavigationContainer>
-    </SafeAreaProvider>
+    <AuthProvider>
+      <SafeAreaProvider>
+        <NavigationContainer>
+          <StatusBar style="auto" />
+          <Navigation />
+        </NavigationContainer>
+      </SafeAreaProvider>
+    </AuthProvider>
   );
 }

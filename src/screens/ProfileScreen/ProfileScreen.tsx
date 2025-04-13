@@ -11,10 +11,13 @@ import {
   UIManager,
   Modal,
   LayoutAnimation,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
+import { useAuth } from '../../context/AuthContext';
 
 // Enable LayoutAnimation for Android
 if (Platform.OS === 'android') {
@@ -27,6 +30,8 @@ if (Platform.OS === 'android') {
 type RootStackParamList = {
   Home: undefined;
   Profile: undefined;
+  TermsAndConditions: undefined;
+  PrivacyPolicy: undefined;
 };
 type ProfileScreenProps = StackNavigationProp<RootStackParamList, 'Profile'>;
 
@@ -54,6 +59,8 @@ const hairProducts: Product[] = [
 export const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<ProfileScreenProps>();
   const { width } = Dimensions.get('window');
+  const { user, logout } = useAuth();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   
   // Bookmarked states
   const [bookmarkedSkin, setBookmarkedSkin] = useState<{ [key: number]: boolean }>({
@@ -117,6 +124,29 @@ export const ProfileScreen: React.FC = () => {
   // Handle product card press
   const handleProductPress = (product: Product) => {
     console.log(`Product pressed: ${product.name}`);
+  };
+
+  // Handle logout
+  const handleLogout = async () => {
+    try {
+      setIsLoggingOut(true);
+      await logout();
+      // Navigation will be handled by the AuthContext
+    } catch (error) {
+      Alert.alert('Logout Error', 'There was a problem logging out. Please try again.');
+      console.error('Logout error:', error);
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
+
+  // Handle terms and privacy navigation
+  const handleNavigateToTerms = () => {
+    navigation.navigate('TermsAndConditions');
+  };
+
+  const handleNavigateToPrivacy = () => {
+    navigation.navigate('PrivacyPolicy');
   };
 
   // Product card component
@@ -239,17 +269,31 @@ export const ProfileScreen: React.FC = () => {
         </View>
 
         {/* Logout Button */}
-        <TouchableOpacity style={styles.logoutButton}>
-          <Text style={styles.logoutText}>Log Out</Text>
+        <TouchableOpacity 
+          style={styles.logoutButton}
+          onPress={handleLogout}
+          disabled={isLoggingOut}
+        >
+          {isLoggingOut ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <Text style={styles.logoutText}>Log Out</Text>
+          )}
         </TouchableOpacity>
 
-         {/* Terms and Conditions */}
-         <TouchableOpacity style={styles.termsButton}>
+        {/* Terms and Conditions */}
+        <TouchableOpacity 
+          style={styles.termsButton}
+          onPress={handleNavigateToTerms}
+        >
           <Text style={styles.termsText}>Terms and Conditions</Text>
         </TouchableOpacity>
 
-         {/* Privacy Policy */}
-         <TouchableOpacity style={styles.termsButton}>
+        {/* Privacy Policy */}
+        <TouchableOpacity 
+          style={styles.termsButton}
+          onPress={handleNavigateToPrivacy}
+        >
           <Text style={styles.termsText}>Privacy Policy</Text>
         </TouchableOpacity>
       </View>
@@ -314,8 +358,8 @@ const styles = StyleSheet.create({
     marginLeft: 5,
   },
   backIcon: {
-    width: 60,
-    height: 60,
+    width: 25,
+    height: 25,
   },
   profileSection: {
     alignItems: 'center',
@@ -463,7 +507,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     zIndex: 999,
   },
-  // Explicitly removing any default tint so the PNG’s original color is preserved
+  // Explicitly removing any default tint so the PNG's original color is preserved
   bookmarkIcon: {
     marginLeft: -50,
     width: 20,

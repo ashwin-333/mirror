@@ -8,9 +8,11 @@ import {
   Dimensions,
   StatusBar,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Logo } from '../../components/Logo';
+import { useAuth } from '../../context/AuthContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const BASE_WIDTH = 393;
@@ -24,13 +26,24 @@ export const WelcomeScreen = ({ navigation }: WelcomeScreenProps) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const { login } = useAuth();
 
   const handleLogin = async () => {
+    if (!email || !password) {
+      setError('Please enter both email and password');
+      return;
+    }
+
     try {
-      // Firebase auth removed - just navigate
-      navigation.replace('Home');
+      setIsLoading(true);
+      setError('');
+      await login(email, password);
+      // Navigation is handled by the Auth context
     } catch (err: any) {
-      setError('Login functionality disabled');
+      setError(err.message || 'Login failed. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -73,12 +86,22 @@ export const WelcomeScreen = ({ navigation }: WelcomeScreenProps) => {
 
       {/* Login Button with Arrow */}
       <View style={styles.loginContainer}>
-        <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-          <Text style={styles.loginText}>Log In</Text>
-          <Image 
-            source={require('../../../assets/red-right-arrow.png')} 
-            style={styles.arrowIcon}
-          />
+        <TouchableOpacity 
+          style={styles.loginButton} 
+          onPress={handleLogin}
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <ActivityIndicator size="small" color="#CA5A5E" />
+          ) : (
+            <>
+              <Text style={styles.loginText}>Log In</Text>
+              <Image 
+                source={require('../../../assets/red-right-arrow.png')} 
+                style={styles.arrowIcon}
+              />
+            </>
+          )}
         </TouchableOpacity>
       </View>
 
