@@ -160,12 +160,13 @@ const styles = StyleSheet.create({
     marginBottom: scaleWidth(227),
   },
   scanButtonsWrapper: {
+    marginTop: scaleWidth(10),
     width: "100%",
     alignItems: "center",
   },
   scanButton: {
-    marginBottom: scaleWidth(0),
-    width: "98%",
+    marginBottom: scaleWidth(10),
+    width: "95%",
   },
   scanButtonImage: {
     width: "100%",
