@@ -9,6 +9,8 @@ import {
   ScrollView,
   Platform,
   UIManager,
+  Modal,
+  LayoutAnimation,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -61,6 +63,42 @@ export const ProfileScreen: React.FC = () => {
     1: true, 2: true, 3: true,
   });
 
+  // Confirmation modal states
+  const [modalVisible, setModalVisible] = useState(false);
+  const [currentProduct, setCurrentProduct] = useState<{section: 'skin' | 'hair', productId: number} | null>(null);
+
+  // Show confirmation modal
+  const showRemoveBookmarkModal = (section: 'skin' | 'hair', productId: number) => {
+    // Only show modal if bookmark is currently active
+    const isCurrentlyBookmarked = section === 'skin' 
+      ? bookmarkedSkin[productId] 
+      : bookmarkedHair[productId];
+    
+    if (isCurrentlyBookmarked) {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      setCurrentProduct({ section, productId });
+      setModalVisible(true);
+    } else {
+      // If not bookmarked, just toggle directly (add bookmark)
+      toggleBookmark(section, productId);
+    }
+  };
+
+  // Confirm bookmark removal
+  const confirmRemoveBookmark = () => {
+    if (currentProduct) {
+      toggleBookmark(currentProduct.section, currentProduct.productId);
+    }
+    closeModal();
+  };
+
+  // Close modal
+  const closeModal = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setModalVisible(false);
+    setCurrentProduct(null);
+  };
+
   // Toggle bookmark
   const toggleBookmark = (section: 'skin' | 'hair', productId: number) => {
     if (section === 'skin') {
@@ -112,7 +150,7 @@ export const ProfileScreen: React.FC = () => {
         <Text style={styles.productSubtext}>{product.subtext}</Text>
         <TouchableOpacity 
           style={styles.bookmarkButton}
-          onPress={() => toggleBookmark(section, product.id)}
+          onPress={() => showRemoveBookmarkModal(section, product.id)}
         >
           <Image 
             source={
@@ -210,11 +248,51 @@ export const ProfileScreen: React.FC = () => {
           <Text style={styles.termsText}>Terms and Conditions</Text>
         </TouchableOpacity>
 
-         {/* Terms and Conditions */}
+         {/* Privacy Policy */}
          <TouchableOpacity style={styles.termsButton}>
           <Text style={styles.termsText}>Privacy Policy</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Bookmark Removal Confirmation Modal */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={closeModal}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <Image 
+                source={require('../../../assets/filled-bookmark.png')}
+                style={styles.modalBookmarkIcon}
+                resizeMode="contain"
+              />
+              <Text style={styles.modalTitle}>Removing Bookmark</Text>
+              <Text style={styles.modalText}>
+                Are you sure you want to remove this product from your bookmarks? You will not be able to undo this action.
+              </Text>
+              
+              <View style={styles.modalButtonsContainer}>
+                <TouchableOpacity 
+                  style={styles.modalCancelButton}
+                  onPress={closeModal}
+                >
+                  <Text style={styles.modalCancelText}>Cancel</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={styles.modalRemoveButton}
+                  onPress={confirmRemoveBookmark}
+                >
+                  <Text style={styles.modalRemoveText}>Remove</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -236,14 +314,14 @@ const styles = StyleSheet.create({
     marginLeft: 5,
   },
   backIcon: {
-    width: 20,
-    height: 20,
+    width: 60,
+    height: 60,
   },
   profileSection: {
     alignItems: 'center',
     paddingVertical: 5,
     marginBottom: 10,
-    marginTop: -30,
+    marginTop: -60,
   },
   profileImageContainer: {
     position: 'relative',
@@ -281,6 +359,7 @@ const styles = StyleSheet.create({
     color: '#000000',
     marginTop: -10,
     textAlign: 'center',
+    marginBottom: -10,
   },
   sectionContainer: {
     marginBottom: 20,
@@ -384,11 +463,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     zIndex: 999,
   },
+  // Explicitly removing any default tint so the PNG’s original color is preserved
   bookmarkIcon: {
     marginLeft: -50,
     width: 20,
     height: 25,
     resizeMode: 'contain',
+    tintColor: undefined, 
   },
   termsButton: {
     alignItems: 'center',
@@ -416,5 +497,79 @@ const styles = StyleSheet.create({
     fontSize: 22,
     letterSpacing: -1,
     color: '#FFFFFF',
+  },
+  // New modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    width: '85%',
+    backgroundColor: 'white',
+    borderRadius: 25,
+    overflow: 'hidden',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  modalContent: {
+    padding: 10,
+    alignItems: 'center',
+  },
+  modalBookmarkIcon: {
+    width: 30,
+    height: 30,
+    marginTop: 10,
+    marginBottom: 10,
+    resizeMode: 'contain',
+    tintColor: undefined, // also ensure no default tint
+  },
+  modalTitle: {
+    fontFamily: 'InstrumentSans-SemiBold',
+    fontSize: 26,
+    textAlign: 'center',
+    marginBottom: 15,
+  },
+  modalText: {
+    fontFamily: 'InstrumentSans-Regular',
+    fontSize: 15,
+    textAlign: 'center',
+    marginBottom: 5,
+    paddingHorizontal: 10,
+  },
+  modalButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    paddingHorizontal: 20,
+  },
+  modalCancelButton: {
+    flex: 1,
+    paddingVertical: 0,
+    marginBottom: -5,
+    marginHorizontal: 5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalCancelText: {
+    fontFamily: 'InstrumentSans-Medium',
+    fontSize: 22,
+    color: '#000',
+  },
+  modalRemoveButton: {
+    flex: 1,
+    paddingVertical: 15,
+    marginHorizontal: 5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalRemoveText: {
+    fontFamily: 'InstrumentSans-Medium',
+    fontSize: 22,
+    color: '#ca5a5e',
   },
 });
