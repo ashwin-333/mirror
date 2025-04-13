@@ -76,7 +76,7 @@ cd server
 
 In a new terminal, start the Expo development server:
 ```bash
-npm start
+npx expo start
 ```
 
 This will display a QR code in your terminal. Scan this QR code with the Expo Go app on your mobile device to run the application.
