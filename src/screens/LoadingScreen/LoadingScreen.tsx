@@ -3,6 +3,7 @@ import { View, Text, Image, StyleSheet, TouchableOpacity, Dimensions, StatusBar,
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as FileSystem from 'expo-file-system';
 import { performSkinAnalysis, SkinAnalysisResult, Recommendations, checkServerHealth } from '../../utils/skinAnalysis';
+import { performHairAnalysis, HairAnalysisResult, HairRecommendations, HairInfo } from '../../utils/hairAnalysis';
 import { Svg, Path, G, ClipPath, Defs, Circle, LinearGradient, Stop } from 'react-native-svg';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -15,12 +16,13 @@ type LoadingScreenProps = {
     params: {
       mode: 'face' | 'hair';
       photoUri?: string;
+      hairInfo?: HairInfo;
     };
   };
 };
 
 export const LoadingScreen = ({ navigation, route }: LoadingScreenProps) => {
-  const { mode, photoUri } = route.params;
+  const { mode, photoUri, hairInfo } = route.params;
   const spinAnimation = useRef(new Animated.Value(0)).current;
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<string>("Starting analysis...");
@@ -35,57 +37,105 @@ export const LoadingScreen = ({ navigation, route }: LoadingScreenProps) => {
       })
     ).start();
 
-    // Check server health first
-    const processPhoto = async () => {
-      if (photoUri) {
-        try {
-          // Check if the file exists
-          const fileInfo = await FileSystem.getInfoAsync(photoUri);
-          if (!fileInfo.exists) {
-            throw new Error('Photo file not found');
-          }
-          
-          // Check server health before processing
-          setProgress("Checking background removal service...");
-          await checkServerHealth();
-          
-          // Perform skin analysis using our utility
-          setProgress("Analyzing skin features...");
-          const results = await performSkinAnalysis(photoUri);
-          
-          // Navigate to results screen with analysis data
-          setProgress("Loading results...");
-          navigation.navigate('Results', { 
-            mode,
-            analysis: results.analysis,
-            recommendations: results.recommendations
-          });
-        } catch (err) {
-          console.error('Error analyzing photo:', err);
-          setError('Something went wrong with skin analysis. Please try again.');
-          setProgress("Using fallback recommendations...");
-          
-          // Navigate to results with fallback data after a delay
-          setTimeout(() => {
-            navigation.navigate('Results', { mode });
-          }, 2000);
-        }
-      } else {
-        // If no photo, wait a moment and navigate to results with default data
-        setProgress("No photo provided, using default data...");
-        setTimeout(() => {
-          navigation.navigate('Results', { mode });
-        }, 2000);
-      }
-    };
-
-    processPhoto();
+    // Process based on mode
+    if (mode === 'face') {
+      processFacePhoto();
+    } else if (mode === 'hair') {
+      processHairPhoto();
+    }
 
     // Clean up animation
     return () => {
       spinAnimation.stopAnimation();
     };
   }, [navigation, mode, photoUri, spinAnimation]);
+
+  // Process face/skin photo
+  const processFacePhoto = async () => {
+    if (photoUri) {
+      try {
+        // Check if the file exists
+        const fileInfo = await FileSystem.getInfoAsync(photoUri);
+        if (!fileInfo.exists) {
+          throw new Error('Photo file not found');
+        }
+        
+        // Check server health before processing
+        setProgress("Checking background removal service...");
+        await checkServerHealth();
+        
+        // Perform skin analysis using our utility
+        setProgress("Analyzing skin features...");
+        const results = await performSkinAnalysis(photoUri);
+        
+        // Navigate to results screen with analysis data
+        setProgress("Loading results...");
+        navigation.navigate('Results', { 
+          mode,
+          analysis: results.analysis,
+          recommendations: results.recommendations
+        });
+      } catch (err) {
+        console.error('Error analyzing skin photo:', err);
+        setError('Something went wrong with skin analysis. Please try again.');
+        setProgress("Using fallback recommendations...");
+        
+        // Navigate to results with fallback data after a delay
+        setTimeout(() => {
+          navigation.navigate('Results', { mode });
+        }, 2000);
+      }
+    } else {
+      // If no photo, wait a moment and navigate to results with default data
+      setProgress("No photo provided, using default data...");
+      setTimeout(() => {
+        navigation.navigate('Results', { mode });
+      }, 2000);
+    }
+  };
+
+  // Process hair photo
+  const processHairPhoto = async () => {
+    if (photoUri) {
+      try {
+        // Check if the file exists
+        const fileInfo = await FileSystem.getInfoAsync(photoUri);
+        if (!fileInfo.exists) {
+          throw new Error('Photo file not found');
+        }
+        
+        // Perform hair analysis
+        setProgress("Processing your hair...");
+        const results = await performHairAnalysis(photoUri, hairInfo || {
+          dandruff: null,
+          dryness: null,
+          density: null
+        });
+        
+        // Navigate to HairResults screen with analysis data
+        setProgress("Loading results...");
+        navigation.navigate('HairResults', { 
+          analysis: results.analysis,
+          recommendations: results.recommendations
+        });
+      } catch (err) {
+        console.error('Error analyzing hair photo:', err);
+        setError('Something went wrong with hair analysis. Please try again.');
+        setProgress("Using fallback recommendations...");
+        
+        // Navigate to HairResults with fallback data after a delay
+        setTimeout(() => {
+          navigation.navigate('HairResults', {});
+        }, 2000);
+      }
+    } else {
+      // If no photo, wait a moment and navigate to HairResults with default data
+      setProgress("No photo provided, using default data...");
+      setTimeout(() => {
+        navigation.navigate('HairResults', {});
+      }, 2000);
+    }
+  };
 
   const spin = spinAnimation.interpolate({
     inputRange: [0, 1],

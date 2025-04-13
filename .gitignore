@@ -37,6 +37,7 @@ yarn-error.log*
 # Python
 venv/
 server/venv/
+server/temp/
 __pycache__/
 *.py[cod]
 *$py.class

@@ -37,7 +37,7 @@ pip uninstall -y rembg onnxruntime
 
 # Install required packages
 echo "Installing required packages..."
-pip install flask flask-cors pillow requests
+pip install flask flask-cors pillow requests beautifulsoup4
 
 # Install PyTorch CPU-only version first (necessary for carvekit)
 echo "Installing PyTorch CPU-only version..."

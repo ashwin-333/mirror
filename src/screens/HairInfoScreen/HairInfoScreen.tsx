@@ -55,7 +55,9 @@ export const HairInfoScreen = ({ navigation, route }: HairInfoScreenProps) => {
       {/* Main content */}
       <View style={styles.content}>
         <Text style={styles.title}>Great,</Text>
-        <Text style={styles.subtitle}>Now answer some questions to help Mirror give you the best results.</Text>
+        <Text style={styles.subtitle}>Now answer some</Text>
+        <Text style={styles.subtitle}> questions to help Mirror</Text>
+        <Text style={styles.subtitle}>give you the best results.</Text>
         
         {/* Dandruff section */}
         <Text style={styles.sectionTitle}>Dandruff</Text>
@@ -205,23 +207,26 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: scaleWidth(20),
+    paddingTop: scaleWidth(60),
     paddingBottom: scaleWidth(80),
   },
   title: {
-    fontSize: scaleWidth(36),
+    fontSize: scaleWidth(32),
     fontWeight: 'bold',
-    marginBottom: scaleWidth(5),
+    marginBottom: scaleWidth(10),
     fontFamily: 'InstrumentSans-Bold',
   },
   subtitle: {
-    fontSize: scaleWidth(18),
-    marginBottom: scaleWidth(30),
+    fontSize: scaleWidth(24),
+    marginBottom: scaleWidth(0),
+    lineHeight: scaleWidth(30),
+    fontWeight: '500',
     fontFamily: 'InstrumentSans-Regular',
   },
   sectionTitle: {
     fontSize: scaleWidth(18),
     fontWeight: '500',
-    marginTop: scaleWidth(20),
+    marginTop: scaleWidth(30),
     marginBottom: scaleWidth(15),
     fontFamily: 'InstrumentSans-SemiBold',
   },
@@ -229,15 +234,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: scaleWidth(15),
+    width: '100%',
   },
   option: {
-    backgroundColor: '#F0F0F0',
+    backgroundColor: '#E7E0E0',
     paddingVertical: scaleWidth(12),
-    paddingHorizontal: scaleWidth(16),
+    paddingHorizontal: scaleWidth(6),
     borderRadius: scaleWidth(20),
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: scaleWidth(80),
+    minWidth: scaleWidth(65),
+    flex: 1,
+    marginHorizontal: scaleWidth(4),
   },
   selectedOption: {
     backgroundColor: '#CA5A5E',

@@ -38,7 +38,7 @@ export const CameraScreen = ({ navigation, route }: CameraScreenProps) => {
   const cameraRef = useRef<any>(null);
   
   // Define camera facing
-  const cameraFacing = mode === 'face' ? 'front' : 'back';
+  const cameraFacing = 'front'; // Always use front camera for both modes
 
   useEffect(() => {
     (async () => {

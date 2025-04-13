@@ -17,6 +17,7 @@ import { WelcomeScreen } from './src/screens/WelcomeScreen/WelcomeScreen';
 import { SignUpScreen } from './src/screens/SignUpScreen/SignUpScreen';
 import { TermsAndConditionsScreen } from './src/screens/TermsAndConditionsScreen';
 import { PrivacyPolicyScreen } from './src/screens/PrivacyPolicyScreen';
+import { HairResults } from './src/screens/HairResults/HairResults';
 
 // Auth Context
 import { AuthProvider, useAuth } from './src/context/AuthContext';
@@ -40,7 +41,8 @@ type AppStackParamList = {
   Camera: { mode: 'face' | 'hair' };
   HairInfo: { mode: 'face' | 'hair'; photoUri?: string };
   Loading: { mode: 'face' | 'hair'; photoUri?: string; hairInfo?: any };
-  Results: { mode: 'face' | 'hair' };
+  Results: { mode: 'face' | 'hair'; analysis?: any; recommendations?: any };
+  HairResults: { analysis?: any; recommendations?: any };
   Profile: undefined;
   TermsAndConditions: undefined;
   PrivacyPolicy: undefined;
@@ -91,6 +93,7 @@ const AppNavigator = () => {
       <AppStack.Screen name="HairInfo" component={HairInfoScreen} />
       <AppStack.Screen name="Loading" component={LoadingScreen} />
       <AppStack.Screen name="Results" component={ResultsScreen} />
+      <AppStack.Screen name="HairResults" component={HairResults} />
       <AppStack.Screen name="Profile" component={ProfileScreen} />
       <AppStack.Screen name="TermsAndConditions" component={TermsAndConditionsScreen} />
       <AppStack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />

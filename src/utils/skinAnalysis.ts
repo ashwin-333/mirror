@@ -307,7 +307,7 @@ export const findImageForProduct = (product: any): string => {
 // New Service for Background Removal 
 // ----------------------
 // URL for the Flask background removal service - using development machine IP instead of localhost
-const BACKGROUND_REMOVAL_SERVICE_URL = "http://10.0.0.200:5001/remove-background";
+const BACKGROUND_REMOVAL_SERVICE_URL = "http://100.64.160.220:5001/remove-background";
 let BACKGROUND_REMOVAL_AVAILABLE = true; // Will be set to false if server is unavailable
 
 export const removeImageBackground = async (imageUrl: string): Promise<string | null> => {
@@ -330,26 +330,10 @@ export const removeImageBackground = async (imageUrl: string): Promise<string | 
     );
     
     if (response.status === 200 && response.data.success) {
-      // Get the base64 image data
+      // Get the base64 image data and return it directly
       const base64Image = response.data.base64Image;
-      
-      // Create a unique filename
-      const filename = `bg_removed_${Date.now()}.png`;
-      const imagePath = `${FileSystem.documentDirectory}products/${filename}`;
-      
-      // Ensure directory exists
-      await FileSystem.makeDirectoryAsync(`${FileSystem.documentDirectory}products/`, 
-        { intermediates: true }).catch(() => {});
-      
-      // Remove the data:image/png;base64, prefix to get raw base64
-      const base64Data = base64Image.replace(/^data:image\/\w+;base64,/, '');
-      
-      // Save the base64 data to file
-      await FileSystem.writeAsStringAsync(imagePath, base64Data, 
-        { encoding: FileSystem.EncodingType.Base64 });
-      
-      console.log(`Successfully saved background-removed image to: ${imagePath}`);
-      return imagePath;
+      console.log(`Successfully removed background from image`);
+      return base64Image;
     } else {
       console.log(`Background removal service returned error: `, response.data);
       return null;
@@ -369,7 +353,7 @@ export const removeImageBackground = async (imageUrl: string): Promise<string | 
 };
 
 // ----------------------
-// 5) Download Product Image - UPDATED with background removal
+// 5) Download Product Image - UPDATED to not save any files
 // ----------------------
 export const downloadProductImage = async (imageUrl: string): Promise<string | null> => {
   try {
@@ -443,9 +427,6 @@ export const downloadProductImage = async (imageUrl: string): Promise<string | n
             }
           }
           
-          // Use additional extraction methods if needed
-          // (Fallback code preserved but omitted for brevity)
-          
           if (imgUrls.length > 0) {
             // Use the first valid image URL we found
             directImageUrl = imgUrls[0];
@@ -458,36 +439,21 @@ export const downloadProductImage = async (imageUrl: string): Promise<string | n
       }
     }
     
-    // Try to remove background from ANY image (not just LookFantastic)
+    // Try to remove background from the image
     if (directImageUrl) {
       console.log(`Attempting to remove background from image: ${directImageUrl}`);
-      const backgroundRemovedImage = await removeImageBackground(directImageUrl);
-      if (backgroundRemovedImage) {
+      const backgroundRemovedBase64 = await removeImageBackground(directImageUrl);
+      if (backgroundRemovedBase64) {
         console.log(`✓ Successfully removed background from product image!`);
-        return backgroundRemovedImage;
+        return backgroundRemovedBase64;
       } else {
-        console.log(`⚠️ Background removal failed, falling back to direct download...`);
+        console.log(`⚠️ Background removal failed, falling back to direct URL...`);
       }
     }
     
-    // If background removal failed or wasn't available, fall back to direct download
-    console.log(`Downloading original image without background removal`);
-    const filename = `product_${Date.now()}.jpg`;
-    const directory = `${FileSystem.documentDirectory}products/`;
-    const filePath = `${directory}${filename}`;
-    
-    // Ensure directory exists
-    await FileSystem.makeDirectoryAsync(directory, { intermediates: true }).catch(() => {});
-    
-    // Download the image directly
-    try {
-      const { uri } = await FileSystem.downloadAsync(directImageUrl, filePath);
-      console.log(`Downloaded original image to: ${uri}`);
-      return uri;
-    } catch (downloadError) {
-      console.error(`Error downloading image: ${downloadError.message || downloadError}`);
-      return null;
-    }
+    // If background removal failed or wasn't available, return the direct URL
+    console.log(`Using original image without background removal`);
+    return directImageUrl;
   } catch (error) {
     console.error(`Error in downloadProductImage: ${error.message || error}`);
     return null;
@@ -669,7 +635,7 @@ export const processGeminiRecommendations = async (recommendations: any[]): Prom
     treatments: []
   };
   let productCount = 0;
-  let successCount = 0;
+  
   for (const product of recommendations) {
     productCount++;
     const category = (product.category || '').toLowerCase();
@@ -696,29 +662,29 @@ export const processGeminiRecommendations = async (recommendations: any[]): Prom
       url: product.url || ''
     };
     
-    let imageDownloadSuccessful = false;
     try {
-      console.log(`Downloading image from: ${formattedProduct.image}`);
-      const localImage = await downloadProductImage(formattedProduct.image as string);
-      if (localImage) {
-        formattedProduct.localImage = localImage;
-        console.log(`✓ Image successfully saved locally at: ${localImage}`);
-        imageDownloadSuccessful = true;
+      console.log(`Processing image for: ${formattedProduct.brand} ${formattedProduct.name}`);
+      const imageResult = await downloadProductImage(formattedProduct.image as string);
+      
+      if (imageResult) {
+        // Could be either base64 data or direct URL
+        formattedProduct.localImage = imageResult;
+        console.log(`✓ Successfully processed image for product`);
+        result[resolvedCategory].push(formattedProduct);
       } else {
-        console.log(`⚠️ Could not download image for ${formattedProduct.brand} ${formattedProduct.name}, skipping product`);
+        console.log(`⚠️ Could not process image for ${formattedProduct.brand} ${formattedProduct.name}, still adding product with original image URL`);
+        // Still add the product but without background removal
+        result[resolvedCategory].push(formattedProduct);
       }
     } catch (error) {
-      console.error(`❌ Error downloading image for ${formattedProduct.brand} ${formattedProduct.name}: ${error}`);
-      console.log(`Skipping product due to image download failure`);
-    }
-    
-    // Only add the product if image download was successful
-    if (imageDownloadSuccessful) {
+      console.error(`❌ Error processing image for ${formattedProduct.brand} ${formattedProduct.name}: ${error}`);
+      // Still add the product with the original image URL
+      console.log(`Adding product with original image URL due to processing error`);
       result[resolvedCategory].push(formattedProduct);
-      successCount++;
     }
   }
-  console.log(`\nProcessed ${productCount} recommendations, added ${successCount} products with successful image downloads: ${result.cleansers.length} cleansers, ${result.moisturizers.length} moisturizers, ${result.treatments.length} treatments`);
+  
+  console.log(`\nProcessed ${productCount} recommendations: ${result.cleansers.length} cleansers, ${result.moisturizers.length} moisturizers, ${result.treatments.length} treatments`);
   return result;
 };
 
