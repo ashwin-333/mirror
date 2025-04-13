@@ -8,10 +8,12 @@ import {
   StatusBar,
   TouchableOpacity,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Logo } from '../../components/Logo';
 import { ContinueButton } from '../../components/ContinueButton';
+import { useAuth } from '../../context/AuthContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const BASE_WIDTH = 393;
@@ -28,8 +30,19 @@ export const SignUpScreen = ({ navigation }: SignUpScreenProps) => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [termsAgreed, setTermsAgreed] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const { register } = useAuth();
 
   const handleSignUp = async () => {
+    // Reset error
+    setError('');
+    
+    // Validate inputs
+    if (!firstName || !email || !password || !confirmPassword) {
+      setError('All fields are required');
+      return;
+    }
+    
     if (!termsAgreed) {
       setError('You must agree to the Terms & Conditions and Privacy Policy');
       return;
@@ -41,10 +54,13 @@ export const SignUpScreen = ({ navigation }: SignUpScreenProps) => {
     }
 
     try {
-      // Firebase auth removed - just navigate
-      navigation.replace('Home');
+      setIsLoading(true);
+      await register(email, password, firstName);
+      // Navigation is handled by the Auth context
     } catch (err: any) {
-      setError('Signup functionality disabled');
+      setError(err.message || 'Registration failed. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -160,7 +176,11 @@ export const SignUpScreen = ({ navigation }: SignUpScreenProps) => {
         
         {/* Continue Button right below the confirm password field */}
         <View style={styles.buttonContainer}>
-          <ContinueButton onPress={handleSignUp} />
+          {isLoading ? (
+            <ActivityIndicator size="large" color="#CA5A5E" />
+          ) : (
+            <ContinueButton onPress={handleSignUp} />
+          )}
         </View>
       </View>
 
